@@ -1,0 +1,41 @@
+{
+  "common": {
+    "appName": "Rakeb",
+    "continue": "Continuer",
+    "cancel": "Annuler",
+    "retry": "Réessayer",
+    "close": "Fermer",
+    "back": "Retour",
+    "search": "Rechercher",
+    "loading": "Chargement…",
+    "seats_one": "{{count}} place",
+    "seats_other": "{{count}} places"
+  },
+  "tabs": {
+    "home": "Accueil",
+    "services": "Services",
+    "activity": "Activité",
+    "messages": "Messages",
+    "account": "Compte"
+  },
+  "services": {
+    "comingSoonTitle": "Bientôt disponible",
+    "comingSoonBody": "Ce service n'est pas encore ouvert. Nous vous préviendrons dès son lancement.",
+    "carpool": "Covoiturage",
+    "taxi": "Taxi",
+    "food": "Restauration",
+    "grocery": "Courses"
+  },
+  "auth": {
+    "welcomeTitle": "Bienvenue sur Rakeb",
+    "phoneLabel": "Numéro de téléphone",
+    "otpLabel": "Code de vérification",
+    "signOut": "Se déconnecter"
+  },
+  "errors": {
+    "generic": "Une erreur est survenue. Veuillez réessayer.",
+    "network": "Connexion impossible. Vérifiez votre connexion internet.",
+    "timeout": "Le serveur met trop de temps à répondre.",
+    "empty": "Aucun résultat."
+  }
+}

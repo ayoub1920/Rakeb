@@ -1,0 +1,12 @@
+node_modules
+.expo
+dist
+coverage
+pnpm-lock.yaml
+android
+ios
+expo-env.d.ts
+
+# Source specifications provided by the backend team — kept verbatim.
+API Rakeb.md
+frontend stack.txt

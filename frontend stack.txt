@@ -1,0 +1,242 @@
+Frontend stack for Rakeb
+Core
+React Native
+Expo
+TypeScript
+pnpm
+
+This gives us one codebase for Android and iOS, with optional web support.
+
+Navigation
+Expo Router
+
+File-based routing with route groups for:
+
+(auth)
+(tabs)
+carpool/
+profile/
+support/
+API communication
+Axios
+TanStack Query
+
+Axios handles HTTP requests and authentication headers.
+
+TanStack Query handles:
+
+API loading states
+Caching
+Error states
+Refetching
+Pagination
+Mutations
+Cache invalidation
+
+The app will connect to the NestJS API under /v1, using bearer authentication and cursor pagination as defined in the API specification.
+
+State management
+TanStack Query for backend/server data
+Zustand for small global client state
+React state for local component state
+
+Example Zustand state:
+
+Selected service
+Carpool search origin
+Destination
+Travel date
+Number of seats
+Temporary publish-trip form progress
+
+Do not store API responses globally in Zustand.
+
+Forms and validation
+React Hook Form
+Zod
+
+Used for:
+
+Login and OTP
+Profile editing
+Vehicle forms
+Trip publication
+Booking forms
+Verification forms
+Authentication storage
+Expo SecureStore
+
+Used for:
+
+Access token
+Refresh token
+Session restoration
+
+Tokens should not be stored in AsyncStorage.
+
+Styling and UI
+React Native StyleSheet
+Custom lightweight design system
+No Tailwind
+No NativeWind
+No large UI framework
+
+Design tokens:
+
+colors
+spacing
+typography
+border radius
+shadows
+component sizes
+
+Basic shared components:
+
+AppText
+AppButton
+AppInput
+AppCard
+Screen
+ScreenHeader
+LoadingView
+EmptyView
+ErrorView
+Maps and location
+react-native-maps
+Expo Location
+
+Used later for:
+
+Selecting departure and destination
+Trip search map
+Pickup and drop-off points
+Driver live position
+Route polylines
+
+Maps should sit behind reusable components so features do not depend directly on one map provider.
+
+Real-time features
+Socket.IO Client
+
+Used for:
+
+Driver live tracking
+ETA updates
+Trip status changes
+Chat messages
+Read receipts
+Typing indicators
+
+The API already separates trip tracking and conversation WebSocket channels.
+
+Notifications
+Expo Notifications
+
+Used for:
+
+Booking accepted or declined
+New messages
+Departure reminders
+Trip alerts
+Images and uploads
+Expo Image
+Expo Image Picker
+Signed upload URLs from the backend
+
+Used for:
+
+Avatar
+CIN
+Driving licence
+Vehicle images, if added later
+Localization
+i18next
+react-i18next
+Expo Localization
+
+Languages:
+
+French by default
+Arabic-ready
+RTL-ready
+Date and time
+date-fns
+
+Used for:
+
+Departure dates
+Booking dates
+Relative time
+French date formatting
+Testing
+Jest
+React Native Testing Library
+Mock Service Worker or Axios mocks
+Code quality
+ESLint
+Prettier
+Strict TypeScript
+Path aliases such as @/features and @/components
+Architecture style
+
+Use a feature-based architecture:
+
+src/
+├── app/             # Expo Router screens
+├── features/        # Feature logic and components
+├── components/      # Shared generic components
+├── api/             # Axios and TanStack Query setup
+├── auth/            # Session and token handling
+├── services/        # Location, notifications, WebSocket
+├── stores/          # Small Zustand stores
+├── theme/           # Design tokens
+├── localization/    # French and Arabic
+├── types/
+└── utils/
+
+Inside features:
+
+features/
+├── auth/
+├── services/
+├── profile/
+├── carpool/
+│   ├── places/
+│   ├── search/
+│   ├── trips/
+│   ├── bookings/
+│   ├── publishing/
+│   ├── vehicles/
+│   ├── tracking/
+│   ├── conversations/
+│   └── reviews/
+├── payments/
+├── wallet/
+├── notifications/
+└── support/
+
+Only carpool is active now. Taxi, food, and grocery should only appear in the service catalogue as coming_soon, matching the backend service configuration.
+
+Final stack summary
+React Native
+Expo
+TypeScript
+Expo Router
+Axios
+TanStack Query
+Zustand
+React Hook Form
+Zod
+Expo SecureStore
+react-native-maps
+Expo Location
+Socket.IO Client
+Expo Notifications
+Expo Image
+i18next
+date-fns
+Jest
+React Native Testing Library
+ESLint
+Prettier
+pnpm
