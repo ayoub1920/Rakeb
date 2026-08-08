@@ -15,7 +15,7 @@ describe('root navigation', () => {
     renderRouter('src/app', { initialUrl: '/' });
 
     await waitFor(() => {
-      expect(screen.getByText('Bienvenue sur Rakeb')).toBeOnTheScreen();
+      expect(screen.getByText('Partagez la route, partagez les frais.')).toBeOnTheScreen();
     });
   });
 });

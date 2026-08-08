@@ -83,6 +83,40 @@ export const mockRoutes: MockRoute[] = [
   },
   {
     method: 'POST',
+    path: '/auth/phone/resend',
+    handler: () => ok({ otp_token: 'mock_otp_token', expires_in: 300, resend_after: 60 }),
+  },
+  {
+    method: 'POST',
+    path: '/auth/register',
+    handler: () => ({ status: 204, data: null }),
+  },
+  {
+    method: 'POST',
+    path: '/auth/login',
+    handler: ({ body }) => {
+      const password = (body as { password?: string } | null)?.password;
+      // `wrongpassword` exercises the error path without a second fixture.
+      if (password === 'wrongpassword') {
+        return {
+          status: 401,
+          data: { code: 'invalid_credentials', message: 'Email ou mot de passe incorrect.' },
+        };
+      }
+      return ok({
+        access_token: 'mock_access_token',
+        refresh_token: 'mock_refresh_token',
+        is_new_user: false,
+      });
+    },
+  },
+  {
+    method: 'POST',
+    path: '/auth/password/forgot',
+    handler: () => ({ status: 204, data: null }),
+  },
+  {
+    method: 'POST',
     path: '/auth/refresh',
     handler: () => ok({ access_token: 'mock_access_token', refresh_token: 'mock_refresh_token' }),
   },

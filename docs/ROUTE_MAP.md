@@ -28,13 +28,14 @@ sends any signed-out user here.
 | ------------------------- | ---------------------------- | -------------------- | ------- | --------------------------------------------------------- | ----------- |
 | `/(auth)/welcome`         | `(auth)/welcome.tsx`         | Bienvenue sur Rakeb  | `auth`  | —                                                         | placeholder |
 | `/(auth)/phone`           | `(auth)/phone.tsx`           | Numéro de téléphone  | `auth`  | `POST /auth/phone/start`                                  | placeholder |
-| `/(auth)/otp`             | `(auth)/otp.tsx`             | Code de vérification | `auth`  | `POST /auth/phone/verify`, `POST /auth/phone/resend`      | placeholder |
-| `/(auth)/register`        | `(auth)/register.tsx`        | Créer votre compte   | `auth`  | `POST /auth/register`, `POST /referrals/claim`            | placeholder |
-| `/(auth)/login`           | `(auth)/login.tsx`           | Connexion            | `auth`  | `POST /auth/login`                                        | placeholder |
-| `/(auth)/forgot-password` | `(auth)/forgot-password.tsx` | Mot de passe oublié  | `auth`  | `POST /auth/password/forgot`, `POST /auth/password/reset` | placeholder |
+| `/(auth)/otp`             | `(auth)/otp.tsx`             | Code de vérification | `auth`  | `POST /auth/phone/verify`, `POST /auth/phone/resend`      | **implemented** |
+| `/(auth)/register`        | `(auth)/register.tsx`        | Créer votre compte   | `auth`  | `POST /auth/register`                                     | **partial** — `POST /referrals/claim` not wired (no referral field in the design) |
+| `/(auth)/login`           | `(auth)/login.tsx`           | Connexion            | `auth`  | `POST /auth/login`                                        | **implemented** |
+| `/(auth)/forgot-password` | `(auth)/forgot-password.tsx` | Mot de passe oublié  | `auth`  | `POST /auth/password/forgot`                               | **partial** — `POST /auth/password/reset` belongs to the emailed-link deep link, not this screen |
 
-Route params: `otp` takes `otp_token` and `phone`. The `otp_token` is passed as
-a route param rather than stored — it is single-use and short-lived.
+Route params: `otp` takes `otp_token`, `phone` and `resend_after`. The
+`otp_token` is passed as a route param rather than stored — it is single-use
+and short-lived.
 
 ---
 

@@ -5,8 +5,16 @@ import type { ApiError } from '@/types/api';
 import type { AuthSession, PhoneAuthChallenge } from '@/types/models';
 
 import {
+  forgotPassword,
+  login,
+  registerAccount,
+  resendPhoneOtp,
   startPhoneAuth,
   verifyPhoneOtp,
+  type ForgotPasswordPayload,
+  type LoginPayload,
+  type RegisterPayload,
+  type ResendPhoneOtpPayload,
   type StartPhoneAuthPayload,
   type VerifyPhoneOtpPayload,
 } from './api';
@@ -45,5 +53,47 @@ export function useVerifyPhoneOtp() {
         refreshToken: session.refresh_token,
       });
     },
+  });
+}
+
+/** `POST /auth/phone/resend`. Returns a fresh `resend_after` for the cooldown. */
+export function useResendPhoneOtp() {
+  return useMutation<PhoneAuthChallenge, ApiError, ResendPhoneOtpPayload>({
+    mutationFn: resendPhoneOtp,
+  });
+}
+
+/**
+ * `POST /auth/register`.
+ *
+ * Runs against the session `/auth/phone/verify` already opened — see
+ * `features/auth/api.ts`. It does not call `signIn` itself: the session was
+ * started by the OTP step, this only completes the profile attached to it.
+ */
+export function useRegister() {
+  return useMutation<void, ApiError, RegisterPayload>({
+    mutationFn: registerAccount,
+  });
+}
+
+/** `POST /auth/login`. The email/password alternative to phone + OTP. */
+export function useLogin() {
+  const { signIn } = useAuth();
+
+  return useMutation<AuthSession, ApiError, LoginPayload>({
+    mutationFn: login,
+    onSuccess: async (session) => {
+      await signIn({
+        accessToken: session.access_token,
+        refreshToken: session.refresh_token,
+      });
+    },
+  });
+}
+
+/** `POST /auth/password/forgot`. */
+export function useForgotPassword() {
+  return useMutation<void, ApiError, ForgotPasswordPayload>({
+    mutationFn: forgotPassword,
   });
 }

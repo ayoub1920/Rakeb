@@ -32,3 +32,42 @@ export function toE164(phone: string): string {
   const digits = phone.replace(/[^\d+]/g, '');
   return digits.startsWith('+') ? digits : `+216${digits}`;
 }
+
+const EMAIL = z.string().trim().toLowerCase().email('Adresse email invalide.');
+
+export const registerFormSchema = z.object({
+  email: EMAIL,
+  password: z.string().min(8, '8 caractères minimum.'),
+  marketingOptIn: z.boolean(),
+});
+
+export type RegisterFormValues = z.infer<typeof registerFormSchema>;
+
+export const loginFormSchema = z.object({
+  email: EMAIL,
+  password: z.string().min(1, 'Mot de passe requis.'),
+});
+
+export type LoginFormValues = z.infer<typeof loginFormSchema>;
+
+export const forgotPasswordFormSchema = z.object({
+  email: EMAIL,
+});
+
+export type ForgotPasswordFormValues = z.infer<typeof forgotPasswordFormSchema>;
+
+export type PasswordStrength = 'weak' | 'medium' | 'strong';
+
+/**
+ * Coarse client-side signal only — never a substitute for the server's own
+ * password policy, which is the one that actually gets enforced.
+ */
+export function getPasswordStrength(password: string): PasswordStrength {
+  const varietyCount = [/[a-z]/, /[A-Z]/, /\d/, /[^A-Za-z0-9]/].filter((pattern) =>
+    pattern.test(password),
+  ).length;
+
+  if (password.length >= 10 && varietyCount >= 3) return 'strong';
+  if (password.length >= 8 && varietyCount >= 2) return 'medium';
+  return 'weak';
+}

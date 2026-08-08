@@ -1,4 +1,4 @@
-import { forwardRef, useId } from 'react';
+import { forwardRef, useId, type ReactNode } from 'react';
 import { StyleSheet, TextInput, View, type TextInputProps } from 'react-native';
 
 import { colors, radius, sizes, spacing, textVariants } from '@/theme';
@@ -12,6 +12,8 @@ export type AppInputProps = Omit<TextInputProps, 'style'> & {
   /** Shown only when there is no error. */
   helperText?: string;
   multiline?: boolean;
+  /** Rendered inside the field, right-aligned — e.g. a show/hide password toggle. */
+  rightAccessory?: ReactNode;
 };
 
 /**
@@ -25,7 +27,7 @@ export type AppInputProps = Omit<TextInputProps, 'style'> & {
  * carries the error.
  */
 export const AppInput = forwardRef<TextInput, AppInputProps>(function AppInput(
-  { label, error, helperText, multiline = false, ...rest },
+  { label, error, helperText, multiline = false, rightAccessory, ...rest },
   ref,
 ) {
   const inputId = useId();
@@ -39,17 +41,25 @@ export const AppInput = forwardRef<TextInput, AppInputProps>(function AppInput(
         </AppText>
       ) : null}
 
-      <TextInput
-        ref={ref}
-        style={[styles.input, multiline && styles.multiline, hasError && styles.inputError]}
-        placeholderTextColor={colors.text.tertiary}
-        accessibilityLabel={label}
-        accessibilityLabelledBy={label ? `${inputId}-label` : undefined}
-        accessibilityState={{ disabled: rest.editable === false }}
-        aria-invalid={hasError}
-        multiline={multiline}
-        {...rest}
-      />
+      <View style={styles.inputWrapper}>
+        <TextInput
+          ref={ref}
+          style={[
+            styles.input,
+            multiline && styles.multiline,
+            hasError && styles.inputError,
+            Boolean(rightAccessory) && styles.inputWithAccessory,
+          ]}
+          placeholderTextColor={colors.text.tertiary}
+          accessibilityLabel={label}
+          accessibilityLabelledBy={label ? `${inputId}-label` : undefined}
+          accessibilityState={{ disabled: rest.editable === false }}
+          aria-invalid={hasError}
+          multiline={multiline}
+          {...rest}
+        />
+        {rightAccessory ? <View style={styles.accessory}>{rightAccessory}</View> : null}
+      </View>
 
       {hasError ? (
         <AppText variant="caption" color="error" accessibilityLiveRegion="polite">
@@ -68,6 +78,9 @@ const styles = StyleSheet.create({
   container: {
     gap: spacing.xs,
   },
+  inputWrapper: {
+    justifyContent: 'center',
+  },
   input: {
     height: sizes.input.height,
     paddingHorizontal: spacing.md,
@@ -77,6 +90,13 @@ const styles = StyleSheet.create({
     backgroundColor: colors.background.default,
     color: colors.text.primary,
     fontSize: textVariants.body.fontSize,
+  },
+  inputWithAccessory: {
+    paddingRight: spacing.xxxl + spacing.lg,
+  },
+  accessory: {
+    position: 'absolute',
+    right: spacing.md,
   },
   multiline: {
     height: undefined,
