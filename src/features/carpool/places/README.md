@@ -1,6 +1,6 @@
 # carpool/places
 
-**Status:** reserved — no code yet.
+**Status:** implemented (mock-backed) — `api.ts`, `keys.ts`, `queries.ts` wired; screens consume them. Socket / WS layers and secondary endpoints noted below remain TODO.
 
 Tunisian cities and meeting points: autocomplete, place details, and the place
 picker UI.

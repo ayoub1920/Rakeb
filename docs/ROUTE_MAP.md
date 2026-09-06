@@ -46,11 +46,11 @@ because tab roots have no back button.
 
 | Route       | File                  | Tab      | Feature                 | Endpoints                                  | Status                          |
 | ----------- | --------------------- | -------- | ----------------------- | ------------------------------------------ | ------------------------------- |
-| `/`         | `(tabs)/index.tsx`    | Accueil  | `carpool/search`        | `GET /trips/nearby`, `GET /promos/banners` | placeholder                     |
+| `/`         | `(tabs)/index.tsx`    | Accueil  | `carpool/search`        | `GET /trips/nearby`, `GET /promos/banners`, `GET /services` | **implemented** — nearby trips gated behind an in-screen location prompt |
 | `/services` | `(tabs)/services.tsx` | Services | `services`              | `GET /services`                            | **partial** — real catalogue    |
-| `/activity` | `(tabs)/activity.tsx` | Activité | `carpool/bookings`      | `GET /bookings?status=`                    | placeholder                     |
-| `/messages` | `(tabs)/messages.tsx` | Messages | `carpool/conversations` | `GET /conversations`                       | placeholder                     |
-| `/account`  | `(tabs)/account.tsx`  | Compte   | `profile`               | `GET /me`                                  | **partial** — sign-out is wired |
+| `/activity` | `(tabs)/activity.tsx` | Activité | `carpool/bookings`      | `GET /bookings?status=`                    | **implemented** — upcoming / past / cancelled tabs, infinite list |
+| `/messages` | `(tabs)/messages.tsx` | Messages | `carpool/conversations` | `GET /conversations`                       | **implemented** — conversation list with unread badges; a thread opens from the booking ticket ("Contacter le conducteur"), marks itself read (`POST /conversations/{id}/read`), and streams the driver's replies + typing live over `WS /ws/conversations` (polling fallback when the socket is down) |
+| `/account`  | `(tabs)/account.tsx`  | Compte   | `profile`               | `GET /me`                                  | **implemented** — profile header, menu, admin console (staff), sign-out |
 
 ---
 
@@ -58,13 +58,14 @@ because tab roots have no back button.
 
 | Route                         | File                             | Title                | Feature                 | Endpoints                                       | Status                         |
 | ----------------------------- | -------------------------------- | -------------------- | ----------------------- | ----------------------------------------------- | ------------------------------ |
-| `/carpool/search`             | `carpool/search.tsx`             | Rechercher un trajet | `carpool/search`        | `GET /places/autocomplete`                      | placeholder                    |
-| `/carpool/results`            | `carpool/results.tsx`            | Trajets disponibles  | `carpool/search`        | `GET /trips/search`                             | placeholder                    |
-| `/carpool/trip/[id]`          | `carpool/trip/[id].tsx`          | Détails du trajet    | `carpool/trips`         | `GET /trips/{id}`, `/seat-map`, `/quote`        | placeholder                    |
-| `/carpool/booking/[id]`       | `carpool/booking/[id].tsx`       | Réservation          | `carpool/bookings`      | `GET /bookings/{id}`, `/cancel`, `/share`       | placeholder                    |
-| `/carpool/tracking/[tripId]`  | `carpool/tracking/[tripId].tsx`  | Suivi du trajet      | `carpool/tracking`      | `GET /trips/{id}/tracking`, `WS /ws/trips/{id}` | placeholder + `MapPlaceholder` |
-| `/carpool/conversation/[id]`  | `carpool/conversation/[id].tsx`  | Conversation         | `carpool/conversations` | `GET · POST /conversations/{id}/messages`       | placeholder                    |
-| `/carpool/review/[bookingId]` | `carpool/review/[bookingId].tsx` | Laisser un avis      | `carpool/reviews`       | `POST /bookings/{id}/review`, `/tip`            | placeholder                    |
+| `/carpool/search`             | `carpool/search.tsx`             | Chercher un trajet   | `carpool/search`        | reads the search store; opens the place modal   | **implemented** — origin/destination, day chips, seat stepper |
+| `/carpool/results`            | `carpool/results.tsx`            | Résultats            | `carpool/search`        | `GET /trips/search`                             | **implemented** — infinite list, sort + filter chips, map toggle |
+| `/carpool/trip/[id]`          | `carpool/trip/[id].tsx`          | Détail du trajet     | `carpool/trips`         | `GET /trips/{id}`                               | **implemented** — itinerary, driver, vehicle, policy |
+| `/carpool/book/[tripId]`      | `carpool/book/[tripId].tsx`      | Votre place          | `carpool/trips`, `carpool/bookings`, `payments` | `GET /trips/{id}/seat-map`, `POST /trips/{id}/quote`, `GET /payment-methods`, `POST /promos/validate`, `POST /bookings` | **implemented** — seat map, fare, promo, payment method |
+| `/carpool/booking/[id]`       | `carpool/booking/[id].tsx`       | Votre réservation    | `carpool/bookings`      | `GET /bookings/{id}`, `/cancel`, `/share`       | **implemented** — reservation + passenger code, share, cancel |
+| `/carpool/tracking/[tripId]`  | `carpool/tracking/[tripId].tsx`  | Suivi en direct      | `carpool/tracking`      | `GET /trips/{id}/tracking` (polled); `WS /ws/trips/{id}` is a follow-up | **implemented** — `MapPlaceholder`, driver, ETA, passenger code |
+| `/carpool/conversation/[id]`  | `carpool/conversation/[id].tsx`  | Conversation         | `carpool/conversations` | `GET · POST /conversations/{id}/messages`, `GET /conversations/quick-replies` | **implemented** — inverted thread, optimistic send, quick replies |
+| `/carpool/review/[bookingId]` | `carpool/review/[bookingId].tsx` | Votre avis           | `carpool/reviews`       | `GET /reviews/tags`, `POST /bookings/{id}/review`, `/tip` | **implemented** — stars, compliment tags, comment, tip |
 
 Activité (the bookings list) is the `(tabs)/activity` route above, not a
 separate carpool route.
@@ -73,48 +74,56 @@ separate carpool route.
 
 ## `carpool/publish` — driver wizard
 
-Six steps over **one** draft trip, because `POST /trips` takes the whole thing
-in a single payload.
+Six steps over **one** draft trip (`stores/publish-draft-store`), because
+`POST /trips` takes the whole thing in a single payload. `review` is the only
+step that writes; it clears the draft on success.
 
-| Route                       | File                   | Title               | Endpoints                     |
-| --------------------------- | ---------------------- | ------------------- | ----------------------------- |
-| `/carpool/publish`          | `publish/index.tsx`    | Publier un trajet   | `GET /me/verifications`       |
-| `/carpool/publish/route`    | `publish/route.tsx`    | Itinéraire          | `GET /places/autocomplete`    |
-| `/carpool/publish/schedule` | `publish/schedule.tsx` | Date et heure       | —                             |
-| `/carpool/publish/vehicle`  | `publish/vehicle.tsx`  | Véhicule            | `GET /me/vehicles`            |
-| `/carpool/publish/seats`    | `publish/seats.tsx`    | Places              | —                             |
-| `/carpool/publish/price`    | `publish/price.tsx`    | Prix                | `GET /trips/price-suggestion` |
-| `/carpool/publish/review`   | `publish/review.tsx`   | Vérifier et publier | `POST /trips`                 |
+| Route                       | File                   | Title               | Endpoints                     | Status |
+| --------------------------- | ---------------------- | ------------------- | ----------------------------- | ------ |
+| `/carpool/publish`          | `publish/index.tsx`    | Publier un trajet   | `GET /me/verifications`, `PATCH /me/role` | **implemented** — licence gate + role opt-in |
+| `/carpool/publish/route`    | `publish/route.tsx`    | Itinéraire          | place modal (`target=publish`) | **implemented** — origin, stops, destination |
+| `/carpool/publish/schedule` | `publish/schedule.tsx` | Date et heure       | —                             | **implemented** — day + time chips, weekly recurrence |
+| `/carpool/publish/vehicle`  | `publish/vehicle.tsx`  | Véhicule            | `GET /me/vehicles`            | **implemented** — pick or add |
+| `/carpool/publish/seats`    | `publish/seats.tsx`    | Places              | —                             | **implemented** — seats, instant-book, max-two-in-back |
+| `/carpool/publish/price`    | `publish/price.tsx`    | Prix                | `GET /trips/price-suggestion` | **implemented** — stepper clamped to min/max, anchored on suggestion |
+| `/carpool/publish/review`   | `publish/review.tsx`   | Vérifier et publier | `POST /trips`                 | **implemented** — recap + notes → publish |
 
-All placeholders. Feature: `carpool/publishing`.
+Feature: `carpool/publishing`.
+
+---
+
+## `carpool/trips/mine` & `carpool/requests` — manage published trips
+
+| Route                        | File                          | Title    | Endpoints                                                                 | Status |
+| ---------------------------- | ----------------------------- | -------- | ----------------------------------------------------------------------- | ------ |
+| `/carpool/trips/mine`        | `carpool/trips/mine.tsx`      | Mes trajets | `GET /me/trips?status=`                                              | **implemented** — à venir / confirmés / terminés / annulés |
+| `/carpool/requests/[tripId]` | `carpool/requests/[tripId].tsx` | Demandes | `GET /me/booking-requests`, `POST /bookings/{id}/accept` · `/decline`, `POST /trips/{id}/start` · `/complete` | **implemented** — accept/refuse, passenger check-in by code, complete |
 
 ---
 
 ## `carpool/vehicles` — driver vehicles
 
-| Route                    | File                 | Title               | Endpoints                          |
-| ------------------------ | -------------------- | ------------------- | ---------------------------------- |
-| `/carpool/vehicles`      | `vehicles/index.tsx` | Mes véhicules       | `GET /me/vehicles`                 |
-| `/carpool/vehicles/new`  | `vehicles/new.tsx`   | Ajouter un véhicule | `POST /me/vehicles`                |
-| `/carpool/vehicles/[id]` | `vehicles/[id].tsx`  | Véhicule            | `PATCH · DELETE /me/vehicles/{id}` |
+| Route                    | File                 | Title               | Endpoints                          | Status |
+| ------------------------ | -------------------- | ------------------- | ---------------------------------- | ------ |
+| `/carpool/vehicles`      | `vehicles/index.tsx` | Mes véhicules       | `GET /me/vehicles`                 | **implemented** |
+| `/carpool/vehicles/new`  | `vehicles/new.tsx`   | Ajouter un véhicule | `POST /me/vehicles`                | **implemented** — RHF + Zod, Tunisian plate |
+| `/carpool/vehicles/[id]` | `vehicles/[id].tsx`  | Véhicule            | `PATCH · DELETE /me/vehicles/{id}` | **implemented** — edit, set default, delete |
 
-All placeholders. Feature: `carpool/vehicles`.
+Feature: `carpool/vehicles`.
 
 ---
 
 ## `profile`
 
-| Route                      | File                          | Title                 | Feature         | Endpoints                                                         |
-| -------------------------- | ----------------------------- | --------------------- | --------------- | ----------------------------------------------------------------- |
-| `/profile/edit`            | `profile/edit.tsx`            | Modifier mon profil   | `profile`       | `PATCH /me`, `POST /me/avatar`, `PATCH /me/role`                  |
-| `/profile/preferences`     | `profile/preferences.tsx`     | Préférences de voyage | `profile`       | `GET · PUT /me/preferences`                                       |
-| `/profile/verifications`   | `profile/verifications.tsx`   | Vérifications         | `profile`       | `GET /me/verifications`, `POST /me/verifications/cin`, `/licence` |
-| `/profile/notifications`   | `profile/notifications.tsx`   | Notifications         | `notifications` | `GET · PUT /me/notification-settings`                             |
-| `/profile/payment-methods` | `profile/payment-methods.tsx` | Moyens de paiement    | `payments`      | `GET · POST /payment-methods`                                     |
-| `/profile/wallet`          | `profile/wallet.tsx`          | Portefeuille          | `wallet`        | `GET /wallet`, `/topup`, `/transactions`                          |
-| `/profile/user/[id]`       | `profile/user/[id].tsx`       | Profil                | `profile`       | `GET /users/{id}`, `/reviews`                                     |
-
-All placeholders.
+| Route                      | File                          | Title                 | Feature         | Endpoints                                                         | Status |
+| -------------------------- | ----------------------------- | --------------------- | --------------- | ----------------------------------------------------------------- | ------ |
+| `/profile/edit`            | `profile/edit.tsx`            | Modifier mon profil   | `profile`       | `PATCH /me`, `POST /me/avatar`, `PATCH /me/role`                  | **implemented** — RHF + Zod form, avatar picker → presigned upload, role segmented control |
+| `/profile/preferences`     | `profile/preferences.tsx`     | Préférences de voyage | `profile`       | `GET · PUT /me/preferences`                                       | **implemented** — chat / music / smoking / pets, 3-way toggle |
+| `/profile/verifications`   | `profile/verifications.tsx`   | Vérifications         | `profile`       | `GET /me/verifications`, `POST /me/verifications/licence`         | **implemented**. `POST /me/verifications/cin` still ⬜ |
+| `/profile/notifications`   | `profile/notifications.tsx`   | Notifications         | `notifications` | `GET · PUT /me/notification-settings`                             | placeholder |
+| `/profile/payment-methods` | `profile/payment-methods.tsx` | Moyens de paiement    | `payments`      | `GET · POST · PATCH · DELETE /payment-methods`, `POST /payment-methods/mobile` | **implemented** — list, add card (PSP token), add mobile money, set default, delete |
+| `/profile/wallet`          | `profile/wallet.tsx`          | Portefeuille          | `wallet`        | `GET /wallet`, `GET /wallet/transactions`, `POST /wallet/topup`, `POST /wallet/withdraw` | **implemented** — balance card, top-up, withdraw, infinite ledger |
+| `/profile/user/[id]`       | `profile/user/[id].tsx`       | Profil                | `profile`       | `GET /users/{id}`, `/reviews`                                     | placeholder |
 
 ---
 
@@ -138,7 +147,30 @@ All placeholders. Feature: `support`. `/support/report` takes `target_type` and
 | Route                    | File                        | Purpose                                                                      | Status          |
 | ------------------------ | --------------------------- | ---------------------------------------------------------------------------- | --------------- |
 | `/(modals)/coming-soon`  | `(modals)/coming-soon.tsx`  | Shown when a `coming_soon` service is tapped. Takes `serviceName`.           | **implemented** |
-| `/(modals)/select-place` | `(modals)/select-place.tsx` | Place picker, opened from search and from the publish wizard. Takes `field`. | placeholder     |
+| `/(modals)/select-place` | `(modals)/select-place.tsx` | Place picker, opened from search and from the publish wizard. Takes `field`. | **implemented** — debounced `GET /places/autocomplete`, writes the search store |
+
+---
+
+## `admin` — admin console
+
+Gated by `role === 'admin' | 'support'` in `admin/_layout.tsx`, which redirects
+to `/(tabs)` for anyone else — UX only, not the security boundary; every
+endpoint these screens call re-checks the role server-side
+(`docs/API_MAPPING.md` §14). Reachable from Compte → "Console admin", shown
+only when `useIsAdmin()` is true. Mutating actions in the Users section
+(`useIsFullAdmin()`) are `admin`-only — a `support` viewer sees the directory
+read-only. There is no self-service way to become admin: against the real
+backend, `pnpm admin:promote <phone> admin` in `rakeb-backend`, then sign in
+again (a token keeps its role for its TTL); in mock mode only, `/dev` has a
+button that flips the single mock user to `admin` instead.
+
+| Route                       | File                          | Title               | Feature          | Endpoints                                                                | Status |
+| --------------------------- | ----------------------------- | ------------------- | ---------------- | -------------------------------------------------------------------------- | ------ |
+| `/admin`                    | `admin/index.tsx`             | Console admin       | —                | —                                                                        | **implemented** — landing page, one card per section |
+| `/admin/users`              | `admin/users/index.tsx`       | Utilisateurs        | `admin/users`    | `GET /admin/users?q=&role=&status=&cursor=`                               | **implemented** — debounced search, role + status filter chips, infinite list |
+| `/admin/users/[userId]`     | `admin/users/[userId].tsx`    | Utilisateur         | `admin/users`    | `GET /admin/users/{id}`, `PATCH .../status`, `PATCH .../role`             | **implemented** — profile + stats + verifications, suspend / reactivate / delete, role picker (admin-only; hidden for self and for support) |
+| `/admin/licences`           | `admin/licences/index.tsx`    | Vérifications permis | `admin/licences` | `GET /admin/verifications?type=licence&status=&cursor=`                   | **implemented** — status filter chips, infinite list, pull to refresh |
+| `/admin/licences/[userId]`  | `admin/licences/[userId].tsx` | Vérification        | `admin/licences` | `GET /admin/verifications/{userId}/licence`, `POST .../review`            | **implemented** — document preview (signed URL), approve, reject with a reason |
 
 ---
 
@@ -149,7 +181,7 @@ the flag is off, so the routes are unreachable by deep link as well as invisible
 
 | Route  | File            | Purpose                                                                                                           |
 | ------ | --------------- | ----------------------------------------------------------------------------------------------------------------- |
-| `/dev` | `dev/index.tsx` | Index of every route, so all placeholders are reachable before the real flows connect them. Delete once they are. |
+| `/dev` | `dev/index.tsx` | Index of every route, so all placeholders are reachable before the real flows connect them. Delete once they are. Also carries a "Devenir admin (dev)" button — mock-only, see the `admin` section above. |
 
 ---
 
@@ -165,3 +197,9 @@ the flag is off, so the routes are unreachable by deep link as well as invisible
   verifiable without implementing it.
 - **The guard** (`src/auth/use-protected-route.ts`) allows `(auth)` and `dev`
   when signed out; everything else redirects to `/(auth)/welcome`.
+- **Role-gated groups** are guarded in their own group layout instead of the
+  shared guard above, because role is server data (`GET /me`) and the shared
+  guard only knows session status. `admin` is the one example today
+  (`admin/_layout.tsx`); it follows the same "redirect from the layout, not
+  just hide a link" shape `dev/_layout.tsx` already uses for the env-flag
+  gate.

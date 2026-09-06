@@ -38,7 +38,13 @@
           "locationWhenInUsePermission": "Rakeb utilise votre position pour vous proposer les trajets proches de vous."
         }
       ],
-      "expo-notifications"
+      "expo-notifications",
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Rakeb a besoin d'accéder à vos photos pour envoyer une photo de votre permis de conduire."
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true

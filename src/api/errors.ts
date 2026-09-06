@@ -43,8 +43,12 @@ function readRequestId(error: AxiosError): string | undefined {
 
 /** Converts anything thrown by the network layer into an `ApiError`. */
 export function normalizeError(error: unknown): ApiError {
-  if (isApiError(error)) return error;
-
+  // `AxiosError` is checked first on purpose: it always carries its own
+  // string `code` (`ERR_BAD_REQUEST`, …) and `message`, which satisfies
+  // `isApiError`'s shape check too. Checking that first would return the raw
+  // Axios error unchanged — generic message, transport code, no `field` —
+  // instead of extracting the backend's actual `{ code, message, field }`
+  // from `error.response.data` below.
   if (error instanceof AxiosError) {
     const requestId = readRequestId(error);
 
@@ -77,6 +81,10 @@ export function normalizeError(error: unknown): ApiError {
       requestId,
     };
   }
+
+  // Not an `AxiosError` — an already-normalized `ApiError` passed back through
+  // (e.g. a second `normalizeError` call) takes this path.
+  if (isApiError(error)) return error;
 
   if (error instanceof Error) {
     return { code: CLIENT_ERROR_CODES.UNKNOWN, message: error.message || FALLBACK_MESSAGE };

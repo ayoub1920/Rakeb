@@ -1,65 +1,105 @@
+import type { MessageResponse } from '@/types/api-responses';
 import type { Id, IsoDateTime } from '@/types/models';
 
 /**
- * Socket event contracts.
+ * Socket event contracts — verified against `rakeb-backend`'s
+ * `ConversationsGateway` (`/ws/conversations`) and `TrackingGateway`
+ * (`/ws/trips`). Each namespace is a separate Socket.IO connection.
  *
- * `API Rakeb.md` names the trip channel events (`position`, `eta_updated`,
- * `trip_started`, `trip_completed`) but not the conversation ones — those are
- * assumed here and flagged as open question 4 in
- * `docs/API_FRONTEND_ANALYSIS.md`. Confirm against the Nest gateway before
- * building the chat screen.
+ * Handshake auth is `auth: { token }` (a bearer access token). Passing
+ * `auth.conversation_id` / `auth.trip_id` auto-joins the room on connect;
+ * otherwise the client emits `join`.
  */
+
+export type SocketNamespace = '/ws/conversations' | '/ws/trips';
 
 export type SocketStatus = 'idle' | 'connecting' | 'connected' | 'disconnected' | 'error';
 
-/** Events the server pushes to the client. */
-export type ServerEvents = {
+export type SocketError = { code: string; message: string };
+
+// --- /ws/conversations -------------------------------------------------
+
+export type ConversationServerEvents = {
+  /** The wire `MessageResponse`; map with `toMessage` before it hits the cache. */
+  message: MessageResponse;
+  read: { user_id: Id; read_at: IsoDateTime };
+  typing: { user_id: Id; is_typing: boolean };
+  error: SocketError;
+};
+
+export type ConversationClientEvents = {
+  join: { conversation_id: Id };
+  leave: { conversation_id: Id };
+  'message:send': { conversation_id: Id; body: string };
+  typing: { conversation_id: Id; is_typing: boolean };
+};
+
+// --- /ws/trips -------------------------------------------------------
+
+export type TripServerEvents = {
   position: {
     trip_id: Id;
     lat: number;
     lng: number;
-    heading?: number;
-    at: IsoDateTime;
+    heading: number | null;
+    speed: number | null;
+    recorded_at: IsoDateTime;
   };
   eta_updated: {
     trip_id: Id;
-    eta_minutes: number;
+    eta_at: IsoDateTime | null;
+    remaining_distance_m: number | null;
+    traffic: string;
   };
-  trip_started: { trip_id: Id; at: IsoDateTime };
-  trip_completed: { trip_id: Id; at: IsoDateTime };
-
-  message: {
-    conversation_id: Id;
-    id: Id;
-    author_id: Id;
-    body: string;
-    created_at: IsoDateTime;
-  };
-  typing: { conversation_id: Id; user_id: Id; is_typing: boolean };
-  read: { conversation_id: Id; user_id: Id; at: IsoDateTime };
+  trip_started: { trip_id: Id; started_at: IsoDateTime };
+  trip_completed: { trip_id: Id; completed_at: IsoDateTime };
+  error: SocketError;
 };
 
-export type ServerEventName = keyof ServerEvents;
-
-/**
- * Events the client emits.
- *
- * The API documents channels as paths (`/ws/trips/{id}`). Socket.IO rooms are
- * assumed to be joined with these events rather than by opening one connection
- * per trip — a single multiplexed connection is why `joinTrip` / `leaveTrip`
- * exist at all.
- */
-export type ClientEvents = {
-  join_trip: { trip_id: Id };
-  leave_trip: { trip_id: Id };
-  join_conversation: { conversation_id: Id };
-  leave_conversation: { conversation_id: Id };
-  typing: { conversation_id: Id; is_typing: boolean };
+export type TripClientEvents = {
+  join: { trip_id: Id };
+  leave: { trip_id: Id };
+  'driver:position': {
+    trip_id: Id;
+    lat: number;
+    lng: number;
+    heading?: number;
+    speed?: number;
+  };
 };
 
-export type ClientEventName = keyof ClientEvents;
+// --- namespace → event maps -----------------------------------------
 
-export type ServerEventListener<E extends ServerEventName> = (payload: ServerEvents[E]) => void;
+export type NamespaceEventMap = {
+  '/ws/conversations': {
+    server: ConversationServerEvents;
+    client: ConversationClientEvents;
+  };
+  '/ws/trips': {
+    server: TripServerEvents;
+    client: TripClientEvents;
+  };
+};
+
+export type ServerEventName<N extends SocketNamespace> = keyof NamespaceEventMap[N]['server'] &
+  string;
+export type ClientEventName<N extends SocketNamespace> = keyof NamespaceEventMap[N]['client'] &
+  string;
+
+export type ServerEventPayload<
+  N extends SocketNamespace,
+  E extends ServerEventName<N>,
+> = NamespaceEventMap[N]['server'][E];
+
+export type ClientEventPayload<
+  N extends SocketNamespace,
+  E extends ClientEventName<N>,
+> = NamespaceEventMap[N]['client'][E];
+
+export type ServerEventListener<
+  N extends SocketNamespace,
+  E extends ServerEventName<N>,
+> = (payload: ServerEventPayload<N, E>) => void;
 
 /** Removes the listener it was returned from. */
 export type Unsubscribe = () => void;

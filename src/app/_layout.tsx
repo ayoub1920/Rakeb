@@ -47,6 +47,7 @@ function RootNavigator() {
       <Stack.Screen name="carpool" options={{ headerShown: false }} />
       <Stack.Screen name="profile" options={{ headerShown: false }} />
       <Stack.Screen name="support" options={{ headerShown: false }} />
+      <Stack.Screen name="admin" options={{ headerShown: false }} />
       <Stack.Screen name="(modals)" options={{ headerShown: false, presentation: 'modal' }} />
       {env.enableDevRoutes ? <Stack.Screen name="dev" options={{ headerShown: false }} /> : null}
     </Stack>

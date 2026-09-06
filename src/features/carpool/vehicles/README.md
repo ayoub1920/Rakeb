@@ -1,6 +1,6 @@
 # carpool/vehicles
 
-**Status:** reserved — no code yet.
+**Status:** implemented — `api.ts` / `keys.ts` / `queries.ts` wired to the real backend; screens built. See `docs/ROUTE_MAP.md`.
 
 The driver's vehicles: model, colour, plate, seat count.
 

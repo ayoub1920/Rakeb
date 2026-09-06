@@ -1,11 +1,11 @@
-import { useInfiniteQuery } from '@tanstack/react-query';
+import { useInfiniteQuery, useQuery } from '@tanstack/react-query';
 
 import { getNextCursor, INITIAL_CURSOR } from '@/api/pagination';
 import { STALE_TIME } from '@/api/query-client';
 import type { ApiError, CursorPage } from '@/types/api';
-import type { TripSummary } from '@/types/models';
+import type { Coordinates, TripSummary } from '@/types/models';
 
-import { searchTrips } from './api';
+import { getNearbyTrips, searchTrips } from './api';
 import { tripSearchKeys } from './keys';
 import type { TripSearchParams } from './types';
 
@@ -26,6 +26,22 @@ export function useTripSearch(params: TripSearchParams | null) {
     initialPageParam: INITIAL_CURSOR,
     getNextPageParam: getNextCursor,
     enabled: params !== null,
+    staleTime: STALE_TIME.volatile,
+  });
+}
+
+/**
+ * `GET /trips/nearby`.
+ *
+ * `enabled` is the location gate: the home screen passes `null` until the user
+ * taps "trajets près de moi" and permission resolves to a position. Volatile
+ * staleness for the same reason as search — seat counts move under the user.
+ */
+export function useNearbyTrips(coords: Coordinates | null) {
+  return useQuery<TripSummary[], ApiError>({
+    queryKey: tripSearchKeys.nearby(coords?.lat ?? 0, coords?.lng ?? 0),
+    queryFn: ({ signal }) => getNearbyTrips(coords as Coordinates, { signal }),
+    enabled: coords !== null,
     staleTime: STALE_TIME.volatile,
   });
 }

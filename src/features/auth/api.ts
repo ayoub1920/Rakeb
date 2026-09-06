@@ -49,6 +49,8 @@ export function resendPhoneOtp(payload: ResendPhoneOtpPayload): Promise<PhoneAut
 }
 
 export type RegisterPayload = {
+  first_name: string;
+  last_name: string;
   email: string;
   password: string;
   marketing_opt_in: boolean;

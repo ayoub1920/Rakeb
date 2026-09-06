@@ -1,15 +1,19 @@
 # wallet
 
-**Status:** reserved — no code yet.
+**Status:** implemented against `rakeb-backend` (also mirrored in the mock).
 
-Balance, top-ups, withdrawals, and the transaction ledger.
+The Rakeb wallet: balance (available + on-hold), ledger, top-up and withdraw.
+A destination screen with its own state — distinct from `payments`, where a
+method is chosen inside the booking flow.
 
 ## Endpoints — `API Rakeb.md` §11
 
-- `GET /wallet` — available and pending balance
-- `POST /wallet/topup`
-- `POST /wallet/withdraw` — to RIB or mobile money
-- `GET /wallet/transactions` — cursor paginated
+- `GET /wallet` — balance (`WalletController` in `rakeb-backend`'s
+  `wallet.module.ts`)
+- `GET /wallet/transactions` — cursor-paginated ledger, newest first
+- `POST /wallet/topup` — `{ amount, payment_method_id }`; `@Idempotent()`
+- `POST /wallet/withdraw` — `{ amount, destination_type: 'rib' | 'mobile_money', rib?, msisdn? }`;
+  `@Idempotent()`. Reserves the funds immediately; the payout settles async.
 
 ## Screens
 
@@ -17,9 +21,8 @@ Balance, top-ups, withdrawals, and the transaction ledger.
 
 ## Notes
 
-- Balances are money: use `STALE_TIME.realtime` and `refetchOnMount: 'always'`.
-  A stale balance shown after a top-up is a support ticket.
-- Every amount is millimes. Format with `utils/money`; a float here is a bug.
-- Transactions mix debits, seat sales, referral credit and refunds — model the
-  kind as a discriminated union and use `assertNever` on it.
+- Amounts are integer millimes end to end. The screen converts to/from dinars
+  only at the input boundary (`dinarsToMillimes` / `formatMillimes`).
+- `topup` / `withdraw` send a fresh `Idempotency-Key` per attempt, the same
+  rule as `POST /bookings` (`createRequestId` from `src/api/request-id`).
 - Query scope: `QUERY_SCOPES.wallet`.

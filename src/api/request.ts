@@ -18,6 +18,7 @@ function toConfig(options?: RequestOptions): AxiosRequestConfig {
     skipAuth: options?.skipAuth,
     skipRefresh: options?.skipRefresh,
     signal: options?.signal,
+    headers: options?.headers,
   };
 }
 
@@ -53,7 +54,12 @@ export async function apiPut<T>(url: string, body?: unknown, options?: RequestOp
   return response.data;
 }
 
-export async function apiDelete<T = void>(url: string, options?: RequestOptions): Promise<T> {
-  const response = await apiClient.delete<T>(url, toConfig(options));
+export async function apiDelete<T = void>(
+  url: string,
+  options?: RequestOptions,
+  /** A few endpoints (`DELETE /trips/{id}` with a cancel reason) take a body. */
+  body?: unknown,
+): Promise<T> {
+  const response = await apiClient.delete<T>(url, { ...toConfig(options), data: body });
   return response.data;
 }

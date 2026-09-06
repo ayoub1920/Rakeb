@@ -4,7 +4,8 @@ Every endpoint in [`API Rakeb.md`](../API%20Rakeb.md), and the file it belongs
 in. Adding one is opening a known file, not deciding where it goes.
 
 **✅ implemented** — the function exists. **⬜ not implemented** — add it to the
-listed file.
+listed file. **🟡 partial** — the function exists but the mock (or the real
+backend) only covers part of the contract; the row says what is missing.
 
 Conventions that apply to all of them:
 
@@ -16,6 +17,30 @@ Conventions that apply to all of them:
   `INITIAL_CURSOR` / `getNextCursor` from `src/api/pagination.ts`.
 - Add a fixture to `src/api/mock/routes.ts` at the same time, or mock mode
   returns `501 not_implemented` for it.
+
+---
+
+## Wire shapes vs. domain model (the mapping layer)
+
+The NestJS API's response DTOs do **not** match the domain types in
+`src/types/models.ts` field-for-field: it flattens a place into
+`origin_label` / `origin_lat`, names the driver `display_name`, wraps the seat
+map in `{ seats, seats_available }`, returns bare arrays for
+`GET /conversations`, `/reviews/tags`, `/payment-methods`, and puts the fare
+under `price.total` on a booking.
+
+Those wire shapes live in `src/types/api-responses.ts`. Each feature's `api.ts`
+maps `XxxResponse` → the domain type at the boundary, so screens, queries and
+components never see the wire shape. Shared trip mappers (`toTripSummary`,
+`toTrip`, `toSeatMap`, `toQuote`) are in
+`src/features/carpool/trips/mappers.ts` and reused by `search` and `bookings`.
+
+Mock fixtures (`src/api/mock/fixtures.ts`) return the **wire** shapes too, so
+mock mode exercises the same mapping layer as a real backend.
+
+The passenger booking flow (search → results → trip → seat/pay → ticket →
+tracking → messages → review) is wired against the real backend and marked
+**implemented** in `docs/ROUTE_MAP.md`.
 
 ---
 
@@ -40,15 +65,29 @@ Conventions that apply to all of them:
 |     | Endpoint                                  | Notes                                                                                |
 | --- | ----------------------------------------- | ------------------------------------------------------------------------------------ |
 | ✅  | `GET /me`                                 | Also the session probe                                                               |
-| ⬜  | `PATCH /me`                               |                                                                                      |
-| ⬜  | `POST /me/avatar`                         | Multipart _or_ presigned via `POST /uploads/sign` — pick one first (open question 7) |
-| ⬜  | `PATCH /me/role`                          | `rider \| driver \| both`                                                            |
-| ⬜  | `GET · PUT /me/preferences`               |                                                                                      |
+| ✅  | `PATCH /me`                               | first/last name, birth date, e-mail, bio, locale — `/profile/edit`                    |
+| ✅  | `POST /me/avatar`                         | Presigned upload (§2a, purpose `avatar`, public bucket) → `{ upload_id }`. Open question 7 resolved: the backend always uses presigned uploads, never multipart |
+| ✅  | `PATCH /me/role`                          | `rider \| driver \| both`. Staff roles (`admin`, `support`) are never self-assignable — the server rejects it regardless of what the client sends |
+| ✅  | `GET · PUT /me/preferences`               | chat / music / smoking / pets, each `yes \| no \| maybe` — `/profile/preferences`   |
 | ⬜  | `GET /me/stats`                           |                                                                                      |
 | ⬜  | `GET /users/{id}`                         | Public profile                                                                       |
 | ⬜  | `GET /users/{id}/reviews`                 | Paginated                                                                            |
-| ⬜  | `POST /me/verifications/cin` · `/licence` | Licence gates publishing                                                             |
-| ⬜  | `GET /me/verifications`                   |                                                                                      |
+| ⬜  | `POST /me/verifications/cin`              |                                                                                      |
+| ✅  | `POST /me/verifications/licence`          | Body `{ front_upload_id }` — upload the file first via `features/uploads/api.ts` (`POST /uploads/sign` → `PUT` → `POST /uploads/{id}/confirm`). Always resets status to `pending` — see §14 |
+| ✅  | `GET /me/verifications`                   | `can_publish_trips` gates `POST /trips` (§7), enforced server-side too              |
+
+---
+
+### 2a. Uploads → `features/uploads/api.ts`
+
+Shared by any feature that submits a file — the licence document today, an
+avatar or a vehicle photo whenever those are wired. `uploadFile()` is the
+whole three-step round trip; nothing above calls `/uploads/*` directly.
+
+|     | Endpoint                     | Notes                                                                 |
+| --- | ----------------------------- | ---------------------------------------------------------------------- |
+| ✅  | `POST /uploads/sign`         | Returns a pre-signed `PUT` URL (S3/MinIO) plus `upload_id`             |
+| ✅  | `POST /uploads/{id}/confirm` | Call after the `PUT` succeeds — an unconfirmed upload cannot be referenced by `POST /me/verifications/licence` (`UPLOAD_NOT_CONFIRMED`) |
 
 ---
 
@@ -78,7 +117,7 @@ Conventions that apply to all of them:
 | --- | ------------------------------------- | --------------------------------------------- |
 | ✅  | `GET /trips/search`                   | Paginated. `filters` sent comma-joined        |
 | ⬜  | `GET /trips/search/map`               | Polylines + markers; types in `services/maps` |
-| ⬜  | `GET /trips/nearby?lat=&lng=`         | Home screen                                   |
+| ✅  | `GET /trips/nearby?lat=&lng=`         | Home screen. Not paginated; `coords` from `services/location` after opt-in |
 | ⬜  | `GET · DELETE /me/recent-searches`    |                                               |
 | ⬜  | `GET · POST · DELETE /me/trip-alerts` |                                               |
 
@@ -120,7 +159,7 @@ Conventions that apply to all of them:
 |     | Endpoint                                  | Notes                               |
 | --- | ----------------------------------------- | ----------------------------------- |
 | ⬜  | `GET /trips/price-suggestion`             | Recommended price + min/max range   |
-| ⬜  | `POST /trips`                             | Whole trip in one payload           |
+| ✅  | `POST /trips`                             | Whole trip in one payload. The real backend enforces the licence gate (`VERIFICATION_REQUIRED`, §14) before anything else. Mock mode only checks `can_publish_trips` and echoes a minimal trip back — good enough to exercise the gate offline, not a model of real trip-publishing |
 | ⬜  | `GET /me/trips?status=`                   | Paginated                           |
 | ⬜  | `PATCH · DELETE /trips/{id}`              |                                     |
 | ⬜  | `GET /me/booking-requests`                | Paginated                           |
@@ -147,9 +186,9 @@ Conventions that apply to all of them:
 | ⬜  | `GET /conversations`                |                                                |
 | ⬜  | `GET /conversations/{id}/messages`  | Paginated, inverted list                       |
 | ⬜  | `POST /conversations/{id}/messages` | Optimistic; reconcile on the socket echo by id |
-| ⬜  | `POST /conversations/{id}/read`     |                                                |
+| ✅  | `POST /conversations/{id}/read`     | Called on thread open + on each new message; clears the unread badge |
 | ⬜  | `GET /conversations/quick-replies`  | `STALE_TIME.static`                            |
-| ⬜  | `WS /ws/conversations/{id}`         | Event names assumed — confirm first            |
+| ✅  | `WS /ws/conversations`              | Socket.IO namespace. `useConversationLiveUpdates` — live `message` + `typing`, deduped into the messages cache. `services/socket` is namespace-aware; polling stays on as a fallback |
 
 ---
 
@@ -170,18 +209,18 @@ Conventions that apply to all of them:
 
 |     | Endpoint                               | Notes                                       |
 | --- | -------------------------------------- | ------------------------------------------- |
-| ⬜  | `GET · POST /payment-methods`          | Cards via PSP token only — never a raw PAN  |
-| ⬜  | `POST /payment-methods/mobile`         | D17 / e-DINAR / Flouci                      |
-| ⬜  | `PATCH · DELETE /payment-methods/{id}` |                                             |
+| ✅  | `GET · POST /payment-methods`          | Cards via PSP token only — never a raw PAN  |
+| ✅  | `POST /payment-methods/mobile`         | D17 / e-DINAR / Flouci. Wire `type` is `mobile_money` |
+| ✅  | `PATCH · DELETE /payment-methods/{id}` | Set default / rename / remove — `/profile/payment-methods` |
 | ⬜  | `POST /payments/intents`               | Authorize at booking, capture at acceptance |
 
 ### `features/wallet/api.ts`
 
 |     | Endpoint                                       | Notes                 |
 | --- | ---------------------------------------------- | --------------------- |
-| ⬜  | `GET /wallet`                                  | `STALE_TIME.realtime` |
-| ⬜  | `POST /wallet/topup` · `POST /wallet/withdraw` |                       |
-| ⬜  | `GET /wallet/transactions`                     | Paginated             |
+| ✅  | `GET /wallet`                                  | `STALE_TIME.realtime`. `WalletController` in `rakeb-backend`'s `wallet.module.ts` |
+| ✅  | `POST /wallet/topup` · `POST /wallet/withdraw` | Both `@Idempotent()` — fresh `Idempotency-Key` per attempt |
+| ✅  | `GET /wallet/transactions`                     | Paginated. `features/wallet`  |
 
 ### Not a frontend concern
 
@@ -193,11 +232,11 @@ Conventions that apply to all of them:
 
 ### `features/payments/api.ts`
 
-|     | Endpoint                                     |
-| --- | -------------------------------------------- |
-| ⬜  | `POST /promos/validate`                      |
-| ⬜  | `GET /promos/banners`                        |
-| ⬜  | `GET /me/referral` · `POST /referrals/claim` |
+|     | Endpoint                                     | Notes                                             |
+| --- | -------------------------------------------- | ------------------------------------------------- |
+| ⬜  | `POST /promos/validate`                      | The authority on a discount; never compute one client-side |
+| ✅  | `GET /promos/banners`                        | Home-screen strip. `STALE_TIME.static`; empty list hides the section |
+| ⬜  | `GET /me/referral` · `POST /referrals/claim` |                                                  |
 
 ### `features/services/api.ts`
 
@@ -216,6 +255,37 @@ Conventions that apply to all of them:
 | ⬜  | `POST /support/tickets`          | Attach `ApiError.requestId` when opened from a failure                  |
 | ⬜  | `POST /reports`                  |                                                                         |
 | ⬜  | `POST /sos`                      | Safety critical — must not be gated behind a small confirmation control |
+
+---
+
+## 14. Administration → `features/admin/licences/api.ts`
+
+Not in `API Rakeb.md` — implemented in `rakeb-backend`'s
+`src/modules/admin/admin-verifications.controller.ts`. The endpoint also
+serves `cin` rows; this app only surfaces `licence` (`type=licence` pinned in
+every call). Every endpoint requires the `admin` or `support` role, enforced
+by `RolesGuard` server-side — the mock (`src/api/mock/routes.ts`) returns the
+same `403` for anyone else.
+
+|     | Endpoint                                                | Notes                                    |
+| --- | -------------------------------------------------------- | ----------------------------------------- |
+| ✅  | `GET /admin/verifications?type=licence&status=&cursor=`  | Real cursor pagination (`{ items, next_cursor, has_more, total }`) |
+| ✅  | `GET /admin/verifications/{userId}/licence`               | Includes `front_upload_url` — a short-lived signed download URL |
+| ✅  | `POST /admin/verifications/{userId}/licence/review`       | Body `{ status: 'approved' \| 'rejected', reason? }`. Flips `GET /me/verifications` for that user |
+
+### 14a. User directory → `features/admin/users/api.ts`
+
+`rakeb-backend`'s `admin-users.controller.ts`. `search`/`detail` accept
+`admin` **or** `support`; `status`/`role` changes are `admin`-only. The
+backend refuses an admin acting on their **own** account (`400 BAD_REQUEST`)
+— the detail screen hides those actions for that case.
+
+|     | Endpoint                              | Notes                                                  |
+| --- | ------------------------------------- | ------------------------------------------------------ |
+| ✅  | `GET /admin/users?q=&role=&status=&cursor=` | Matches phone / e-mail / first / last name. Cursor pagination |
+| ✅  | `GET /admin/users/{id}`               | Profile, verification statuses (`cin`/`licence`), trip counts, last seen |
+| ✅  | `PATCH /admin/users/{id}/status`      | Body `{ status: 'active' \| 'suspended' \| 'deleted', reason? }`. `suspended`/`deleted` both block login; neither erases data |
+| ✅  | `PATCH /admin/users/{id}/role`        | Body `{ role }` — any role, incl. `admin`/`support` |
 
 ---
 

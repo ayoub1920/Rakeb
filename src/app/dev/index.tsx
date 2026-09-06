@@ -1,7 +1,9 @@
 import { Stack, router, type Href } from 'expo-router';
-import { FlatList } from 'react-native';
+import { FlatList, View } from 'react-native';
 
-import { AppCard, AppText, Screen } from '@/components';
+import { AppButton, AppCard, AppText, Screen } from '@/components';
+import { env } from '@/config/env';
+import { useDevBecomeAdmin } from '@/features/profile/queries';
 import { spacing } from '@/theme';
 
 /**
@@ -59,12 +61,43 @@ const ROUTES: { group: string; href: Href; label: string }[] = [
 
   { group: 'modals', href: '/(modals)/coming-soon', label: 'Bientôt disponible' },
   { group: 'modals', href: '/(modals)/select-place', label: 'Choisir un lieu' },
+
+  { group: 'admin', href: '/admin', label: 'Console admin' },
+  { group: 'admin', href: '/admin/users', label: 'Utilisateurs (admin)' },
+  { group: 'admin', href: '/admin/licences', label: 'Vérifications permis (admin)' },
 ];
 
 export default function DevRouteIndexScreen() {
+  const becomeAdmin = useDevBecomeAdmin();
+
+  async function onBecomeAdmin() {
+    // Mock-only: `PATCH /me/role` refuses `admin` (staff roles cannot be
+    // self-assigned), same as a real backend would. This hits a route that
+    // only exists in `src/api/mock/routes.ts`, purely so the admin queue is
+    // reachable without a second backend account to test it against.
+    await becomeAdmin.mutateAsync();
+    router.push('/admin/licences');
+  }
+
   return (
     <Screen>
       <Stack.Screen options={{ title: 'Index des routes' }} />
+
+      <View style={{ paddingBottom: spacing.md, gap: spacing.xs }}>
+        {env.enableMockApi ? (
+          <AppButton
+            label="Devenir admin (dev) → file d’attente permis"
+            variant="secondary"
+            loading={becomeAdmin.isPending}
+            onPress={() => void onBecomeAdmin()}
+          />
+        ) : (
+          <AppText variant="caption" color="tertiary">
+            Backend réel : promouvoir un compte avec `pnpm admin:promote &lt;téléphone&gt; admin`
+            dans rakeb-backend, puis rouvrir une session.
+          </AppText>
+        )}
+      </View>
 
       <FlatList
         data={ROUTES}

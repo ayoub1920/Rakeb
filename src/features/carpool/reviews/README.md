@@ -1,6 +1,6 @@
 # carpool/reviews
 
-**Status:** reserved — no code yet.
+**Status:** implemented (mock-backed) — `api.ts`, `keys.ts`, `queries.ts` wired; screens consume them. Socket / WS layers and secondary endpoints noted below remain TODO.
 
 Ratings, compliment tags, and tips after a completed trip.
 

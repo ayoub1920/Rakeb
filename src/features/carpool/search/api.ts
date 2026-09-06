@@ -1,15 +1,17 @@
 import { toCursorParams } from '@/api/pagination';
 import { apiGet } from '@/api/request';
 import type { CursorPage, RequestOptions } from '@/types/api';
-import type { TripSummary } from '@/types/models';
+import type { PaginatedResponse, TripSummaryResponse } from '@/types/api-responses';
+import type { Coordinates, TripSummary } from '@/types/models';
 
+import { toTripSummary } from '../trips/mappers';
 import type { TripSearchParams } from './types';
 
 /**
  * Trip search — `API Rakeb.md` §4.
  *
  * Not implemented (add here):
- *   GET /trips/search/map · GET /trips/nearby
+ *   GET /trips/search/map
  *   GET · DELETE /me/recent-searches
  *   GET · POST · DELETE /me/trip-alerts
  *
@@ -24,12 +26,12 @@ import type { TripSearchParams } from './types';
  * between this response and the booking request. Treat "plus de place" at
  * booking time as an expected outcome, not an error.
  */
-export function searchTrips(
+export async function searchTrips(
   params: TripSearchParams,
   cursor?: string | null,
   options?: RequestOptions,
 ): Promise<CursorPage<TripSummary>> {
-  return apiGet<CursorPage<TripSummary>>(
+  const page = await apiGet<PaginatedResponse<TripSummaryResponse>>(
     '/trips/search',
     {
       ...params,
@@ -38,4 +40,29 @@ export function searchTrips(
     },
     options,
   );
+  return {
+    items: page.items.map(toTripSummary),
+    next_cursor: page.next_cursor,
+    total: page.total,
+  };
+}
+
+/**
+ * `GET /trips/nearby?lat=&lng=`.
+ *
+ * A short, curated list for the home screen — not paginated, and not the search
+ * result set. Coordinates come from `services/location` only after the user
+ * asks for "trajets près de moi"; this function never prompts for permission
+ * itself.
+ */
+export async function getNearbyTrips(
+  coords: Coordinates,
+  options?: RequestOptions,
+): Promise<TripSummary[]> {
+  const rows = await apiGet<TripSummaryResponse[]>(
+    '/trips/nearby',
+    { lat: coords.lat, lng: coords.lng },
+    options,
+  );
+  return rows.map(toTripSummary);
 }

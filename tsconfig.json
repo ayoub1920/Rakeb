@@ -4,8 +4,9 @@
     "strict": true,
     "resolveJsonModule": true,
     // Metro's `tsconfigPaths` support resolves `@/` from `baseUrl` + `paths`.
-    // TypeScript 6 deprecates `baseUrl`; keep it until Metro no longer needs it.
-    "ignoreDeprecations": "6.0",
+    // A later TypeScript deprecates `baseUrl`; keep it until Metro no longer
+    // needs it. `"5.0"` is the accepted value on the TS 5.9 line this SDK pins.
+    "ignoreDeprecations": "5.0",
     "baseUrl": ".",
     "paths": {
       "@/*": ["./src/*"]

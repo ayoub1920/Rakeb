@@ -35,7 +35,16 @@ export function toE164(phone: string): string {
 
 const EMAIL = z.string().trim().toLowerCase().email('Adresse email invalide.');
 
+/** Matches the backend's `@Length(1, 80)` on `first_name` / `last_name`. */
+const NAME = z
+  .string()
+  .trim()
+  .min(1, 'Champ requis.')
+  .max(80, '80 caractères maximum.');
+
 export const registerFormSchema = z.object({
+  firstName: NAME,
+  lastName: NAME,
   email: EMAIL,
   password: z.string().min(8, '8 caractères minimum.'),
   marketingOptIn: z.boolean(),

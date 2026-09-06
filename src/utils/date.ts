@@ -43,6 +43,11 @@ export function formatShortDate(date: Date, locale?: SupportedLocale): string {
   return format(date, 'd MMM', { locale: localeFor(locale) });
 }
 
+/** `mars 2025` — used for "membre depuis". */
+export function formatMonthYear(date: Date, locale?: SupportedLocale): string {
+  return format(date, 'MMMM yyyy', { locale: localeFor(locale) });
+}
+
 /** `14:30` — 24-hour, which is what Tunisian users expect. */
 export function formatTime(date: Date): string {
   return format(date, 'HH:mm');

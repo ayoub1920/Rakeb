@@ -1,12 +1,22 @@
-import { useInfiniteQuery } from '@tanstack/react-query';
+import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
 import { getNextCursor, INITIAL_CURSOR } from '@/api/pagination';
 import { STALE_TIME } from '@/api/query-client';
+import { QUERY_SCOPES } from '@/api/query-keys';
 import { useIsAuthenticated } from '@/auth/use-auth';
 import type { ApiError, CursorPage } from '@/types/api';
-import type { Booking, BookingBucket } from '@/types/models';
+import type { Booking, BookingBucket, BookingDetail } from '@/types/models';
 
-import { getBookings } from './api';
+import {
+  cancelBooking,
+  createBooking,
+  getBooking,
+  getBookings,
+  shareBooking,
+  type CancelBookingResult,
+  type CreateBookingInput,
+  type ShareBookingResult,
+} from './api';
 import { bookingKeys } from './keys';
 
 /**
@@ -27,5 +37,62 @@ export function useBookings(bucket: BookingBucket) {
     enabled: isAuthenticated,
     staleTime: STALE_TIME.volatile,
     refetchOnMount: 'always',
+  });
+}
+
+/**
+ * `GET /bookings/{id}`.
+ *
+ * `refetchOnMount` for the same reason as the list — the driver may have
+ * accepted a `pending` request while the rider was elsewhere.
+ */
+export function useBooking(bookingId: string | undefined) {
+  return useQuery<BookingDetail, ApiError>({
+    queryKey: bookingKeys.detail(bookingId ?? ''),
+    queryFn: ({ signal }) => getBooking(bookingId as string, { signal }),
+    enabled: Boolean(bookingId),
+    staleTime: STALE_TIME.volatile,
+    refetchOnMount: 'always',
+  });
+}
+
+/**
+ * `POST /bookings`.
+ *
+ * Seeds the detail cache with the response so the ticket screen it navigates to
+ * paints immediately, then invalidates the lists and the trip (its seat count
+ * just dropped).
+ */
+export function useCreateBooking() {
+  const queryClient = useQueryClient();
+
+  return useMutation<BookingDetail, ApiError, CreateBookingInput>({
+    mutationFn: (input) => createBooking(input),
+    onSuccess: (booking) => {
+      queryClient.setQueryData(bookingKeys.detail(booking.id), booking);
+      void queryClient.invalidateQueries({ queryKey: bookingKeys.all });
+      void queryClient.invalidateQueries({ queryKey: [QUERY_SCOPES.trips] });
+      void queryClient.invalidateQueries({ queryKey: [QUERY_SCOPES.tripSearch] });
+    },
+  });
+}
+
+/** `POST /bookings/{id}/cancel`. Invalidates the detail and every bookings list. */
+export function useCancelBooking(bookingId: string) {
+  const queryClient = useQueryClient();
+
+  return useMutation<CancelBookingResult, ApiError, void>({
+    mutationFn: () => cancelBooking(bookingId),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: bookingKeys.all });
+      void queryClient.invalidateQueries({ queryKey: [QUERY_SCOPES.trips] });
+    },
+  });
+}
+
+/** `POST /bookings/{id}/share` — no cache impact, just returns a link. */
+export function useShareBooking(bookingId: string) {
+  return useMutation<ShareBookingResult, ApiError, void>({
+    mutationFn: () => shareBooking(bookingId),
   });
 }

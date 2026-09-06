@@ -51,7 +51,7 @@ export default function RegisterScreen() {
     formState: { errors, isSubmitting },
   } = useForm<RegisterFormValues>({
     resolver: zodResolver(registerFormSchema),
-    defaultValues: { email: '', password: '', marketingOptIn: false },
+    defaultValues: { firstName: '', lastName: '', email: '', password: '', marketingOptIn: false },
   });
 
   const password = watch('password');
@@ -62,15 +62,23 @@ export default function RegisterScreen() {
 
     try {
       await registerAccount.mutateAsync({
+        first_name: values.firstName,
+        last_name: values.lastName,
         email: values.email,
         password: values.password,
         marketing_opt_in: values.marketingOptIn,
       });
       router.replace('/(tabs)');
     } catch (error) {
+      const firstNameError = getFieldError(error, 'first_name');
+      const lastNameError = getFieldError(error, 'last_name');
       const emailError = getFieldError(error, 'email');
       const passwordError = getFieldError(error, 'password');
-      if (emailError) {
+      if (firstNameError) {
+        setError('firstName', { message: firstNameError });
+      } else if (lastNameError) {
+        setError('lastName', { message: lastNameError });
+      } else if (emailError) {
         setError('email', { message: emailError });
       } else if (passwordError) {
         setError('password', { message: passwordError });
@@ -101,6 +109,42 @@ export default function RegisterScreen() {
       </AppText>
 
       <View style={styles.fields}>
+        <Controller
+          control={control}
+          name="firstName"
+          render={({ field: { onChange, onBlur, value } }) => (
+            <AppInput
+              label="Prénom"
+              value={value}
+              onChangeText={onChange}
+              onBlur={onBlur}
+              error={errors.firstName?.message}
+              placeholder="Amine"
+              autoCapitalize="words"
+              autoComplete="given-name"
+              returnKeyType="next"
+            />
+          )}
+        />
+
+        <Controller
+          control={control}
+          name="lastName"
+          render={({ field: { onChange, onBlur, value } }) => (
+            <AppInput
+              label="Nom"
+              value={value}
+              onChangeText={onChange}
+              onBlur={onBlur}
+              error={errors.lastName?.message}
+              placeholder="Ben Salah"
+              autoCapitalize="words"
+              autoComplete="family-name"
+              returnKeyType="next"
+            />
+          )}
+        />
+
         <Controller
           control={control}
           name="email"

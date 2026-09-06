@@ -25,6 +25,8 @@ export const QUERY_SCOPES = {
   wallet: 'wallet',
   notifications: 'notifications',
   support: 'support',
+  adminLicences: 'admin-licences',
+  adminUsers: 'admin-users',
 } as const;
 
 export type QueryScope = (typeof QUERY_SCOPES)[keyof typeof QUERY_SCOPES];

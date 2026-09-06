@@ -6,6 +6,7 @@ import { Pressable, StyleSheet, TextInput, View } from 'react-native';
 
 import { getFieldError, normalizeError } from '@/api/errors';
 import { AppButton, AppText, Screen } from '@/components';
+import { env } from '@/config/env';
 import { useResendPhoneOtp, useVerifyPhoneOtp } from '@/features/auth/queries';
 import { otpFormSchema, type OtpFormValues } from '@/features/auth/schemas';
 import { colors, radius, sizes, spacing } from '@/theme';
@@ -15,6 +16,10 @@ const CODE_LENGTH = 6;
 const CURRENT_STEP = 2;
 const TOTAL_STEPS = 6;
 const DEFAULT_RESEND_COOLDOWN_S = 60;
+/** Accepted by the mock `/auth/phone/verify` route — see `api/mock/routes.ts`. */
+const DEV_SKIP_CODE = '123456';
+/** Never in a production build — same double guard as `dev-auth.ts`. */
+const CAN_SKIP_VERIFICATION = env.isDevelopment && env.enableDevRoutes;
 
 export default function OtpScreen() {
   const { otp_token: otpToken, phone, resend_after: resendAfter } = useLocalSearchParams<{
@@ -47,12 +52,12 @@ export default function OtpScreen() {
     return () => clearInterval(timer);
   }, [cooldown]);
 
-  async function onSubmit(values: OtpFormValues) {
+  async function verifyCode(code: string) {
     if (!otpToken) return;
     setFormError(null);
 
     try {
-      const session = await verifyOtp.mutateAsync({ otp_token: otpToken, code: values.code });
+      const session = await verifyOtp.mutateAsync({ otp_token: otpToken, code });
       router.replace(session.is_new_user ? '/(auth)/register' : '/(tabs)');
     } catch (error) {
       const fieldError = getFieldError(error, 'code');
@@ -61,6 +66,22 @@ export default function OtpScreen() {
       } else {
         setFormError(normalizeError(error).message);
       }
+    }
+  }
+
+  async function onSubmit(values: OtpFormValues) {
+    await verifyCode(values.code);
+  }
+
+  async function handleDevSkip() {
+    if (!otpToken) return;
+    setFormError(null);
+
+    try {
+      await verifyOtp.mutateAsync({ otp_token: otpToken, code: DEV_SKIP_CODE });
+      router.replace('/(auth)/register');
+    } catch (error) {
+      setFormError(normalizeError(error).message);
     }
   }
 
@@ -197,6 +218,16 @@ export default function OtpScreen() {
         loading={isSubmitting || verifyOtp.isPending}
         style={styles.submit}
       />
+
+      {CAN_SKIP_VERIFICATION ? (
+        <AppButton
+          label="Ignorer la vérification (dev)"
+          variant="ghost"
+          onPress={handleDevSkip}
+          loading={verifyOtp.isPending}
+          style={styles.devSkip}
+        />
+      ) : null}
     </Screen>
   );
 }
@@ -264,5 +295,8 @@ const styles = StyleSheet.create({
   },
   submit: {
     marginTop: spacing.xl,
+  },
+  devSkip: {
+    marginTop: spacing.sm,
   },
 });

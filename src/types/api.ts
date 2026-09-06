@@ -61,4 +61,6 @@ export type RequestOptions = {
   /** Do not attempt a token refresh on 401 (used by the refresh call itself). */
   skipRefresh?: boolean;
   signal?: AbortSignal;
+  /** Extra per-request headers, e.g. `Idempotency-Key` on `POST /bookings`. */
+  headers?: Record<string, string>;
 };
