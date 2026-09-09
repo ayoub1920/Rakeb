@@ -70,8 +70,8 @@ tracking → messages → review) is wired against the real backend and marked
 | ✅  | `PATCH /me/role`                          | `rider \| driver \| both`. Staff roles (`admin`, `support`) are never self-assignable — the server rejects it regardless of what the client sends |
 | ✅  | `GET · PUT /me/preferences`               | chat / music / smoking / pets, each `yes \| no \| maybe` — `/profile/preferences`   |
 | ⬜  | `GET /me/stats`                           |                                                                                      |
-| ⬜  | `GET /users/{id}`                         | Public profile                                                                       |
-| ⬜  | `GET /users/{id}/reviews`                 | Paginated                                                                            |
+| ✅  | `GET /users/{id}`                         | `profile/user/[id].tsx` — identity, stats, badges, reviews (`usePublicProfile`)      |
+| ✅  | `GET /users/{id}/reviews`                 | Infinite list on the public profile (`useUserReviews`)                               |
 | ⬜  | `POST /me/verifications/cin`              |                                                                                      |
 | ✅  | `POST /me/verifications/licence`          | Body `{ front_upload_id }` — upload the file first via `features/uploads/api.ts` (`POST /uploads/sign` → `PUT` → `POST /uploads/{id}/confirm`). Always resets status to `pending` — see §14 |
 | ✅  | `GET /me/verifications`                   | `can_publish_trips` gates `POST /trips` (§7), enforced server-side too              |
@@ -95,9 +95,9 @@ whole three-step round trip; nothing above calls `/uploads/*` directly.
 
 |     | Endpoint                              | Notes                                                           |
 | --- | ------------------------------------- | --------------------------------------------------------------- |
-| ⬜  | `POST /me/devices`                    | Payload from `services/notifications.buildDeviceRegistration()` |
-| ⬜  | `DELETE /me/devices/{id}`             | On sign-out — TODO marked in `src/auth/session.ts`              |
-| ⬜  | `GET · PUT /me/notification-settings` |                                                                 |
+| ✅  | `POST /me/devices`                    | `device-registration.ts` after sign-in; OS push taps deep-link via `use-notification-response.ts` |
+| ✅  | `DELETE /me/devices/{id}`             | On sign-out (`removeDeviceRegistration`)                        |
+| ✅  | `GET · PUT /me/notification-settings` | `profile/notifications.tsx`                                      |
 | ⬜  | `POST /me/location`                   | Opt-in only                                                     |
 
 ---
@@ -110,13 +110,14 @@ whole three-step round trip; nothing above calls `/uploads/*` directly.
 | --- | ----------------------------------- | ------------------------------------------------------ |
 | ⬜  | `GET /places/autocomplete?q=&near=` | Debounce; `near` from `services/location` when granted |
 | ⬜  | `GET /places/{id}`                  |                                                        |
+| ✅  | `GET /geocode/reverse?lat=&lng=`    | Pin drop → labelled `Place` (`reverseGeocode`); used by `pick-on-map`, publish only |
 
 ### `features/carpool/search/api.ts`
 
 |     | Endpoint                              | Notes                                         |
 | --- | ------------------------------------- | --------------------------------------------- |
 | ✅  | `GET /trips/search`                   | Paginated. `filters` sent comma-joined        |
-| ⬜  | `GET /trips/search/map`               | Polylines + markers; types in `services/maps` |
+| ✅  | `GET /trips/search/map`               | `useTripSearchMap`; markers + decoded polylines → `services/maps`; drives the results map toggle |
 | ✅  | `GET /trips/nearby?lat=&lng=`         | Home screen. Not paginated; `coords` from `services/location` after opt-in |
 | ⬜  | `GET · DELETE /me/recent-searches`    |                                               |
 | ⬜  | `GET · POST · DELETE /me/trip-alerts` |                                               |
@@ -158,14 +159,17 @@ whole three-step round trip; nothing above calls `/uploads/*` directly.
 
 |     | Endpoint                                  | Notes                               |
 | --- | ----------------------------------------- | ----------------------------------- |
-| ⬜  | `GET /trips/price-suggestion`             | Recommended price + min/max range   |
-| ✅  | `POST /trips`                             | Whole trip in one payload. The real backend enforces the licence gate (`VERIFICATION_REQUIRED`, §14) before anything else. Mock mode only checks `can_publish_trips` and echoes a minimal trip back — good enough to exercise the gate offline, not a model of real trip-publishing |
-| ⬜  | `GET /me/trips?status=`                   | Paginated                           |
-| ⬜  | `PATCH · DELETE /trips/{id}`              |                                     |
-| ⬜  | `GET /me/booking-requests`                | Paginated                           |
-| ⬜  | `POST /bookings/{id}/accept` · `/decline` | 24 h window                         |
-| ⬜  | `POST /trips/{id}/start`                  | Validates each `passenger_code`     |
-| ⬜  | `POST /trips/{id}/complete`               | Triggers payout and review requests |
+| ✅  | `GET /trips/price-suggestion`             | Recommended price + min/max range   |
+| ✅  | `POST /trips`                             | Whole trip in one payload. `publish:false` keeps a draft. The real backend enforces the licence gate (`VERIFICATION_REQUIRED`, §14). Mock mode only checks `can_publish_trips` and echoes a minimal trip back |
+| ✅  | `POST /trips/{id}/publish`                | Promotes a `draft` → `published`, schedules the reminders (`publishTripDraft`) |
+| ✅  | `GET /me/trips?status=`                   | `trips/mine.tsx`, every bucket tappable → `/carpool/requests/{id}` |
+| ✅  | `PATCH /trips/{id}`                       | `useUpdateTrip` (wired; no dedicated edit screen yet) |
+| ✅  | `DELETE /trips/{id}`                      | Driver "Annuler le trajet" on `requests/[tripId].tsx` (`useCancelTrip`) |
+| ✅  | `GET /me/booking-requests?trip_id=&status=` | Fetched for both `pending` and `confirmed`/`in_progress` to build the roster |
+| ✅  | `POST /bookings/{id}/accept` · `/decline` | Per-request on `requests/[tripId].tsx` |
+| ✅  | `POST /bookings/{id}/no-show`             | Driver marks a passenger absent while `in_progress` (`markNoShow`) |
+| ✅  | `POST /trips/{id}/start`                  | Called with no body = "Démarrer le covoiturage"; with `passenger_code` = check-in. Server rejects earlier than `trip.start_window_minutes` before departure (`TRIP_TOO_EARLY_TO_START`) |
+| ✅  | `POST /trips/{id}/complete`               | Triggers payout and review requests; also sends `trip_completed` |
 
 ---
 
@@ -173,9 +177,9 @@ whole three-step round trip; nothing above calls `/uploads/*` directly.
 
 |     | Endpoint                    | Notes                                                      |
 | --- | --------------------------- | ---------------------------------------------------------- |
-| ⬜  | `POST /trips/{id}/position` | Driver, every 5–10 s                                       |
-| ⬜  | `GET /trips/{id}/tracking`  | Polling fallback — the screen must work without the socket |
-| ⬜  | `WS /ws/trips/{id}`         | `services/socket` types the events already                 |
+| ✅  | `POST /trips/{id}/position` | `use-driver-position-broadcast.ts` — foreground watch (~8 s / 40 m) while the driver's trip is `in_progress`; also emits `driver:position` on `/ws/trips`. 409 `TRACKING_TRIP_NOT_ACTIVE` otherwise |
+| ✅  | `GET /trips/{id}/tracking`  | Polling fallback — the screen must work without the socket. 4-step timeline (`Prévu → Démarré → En route → Arrivé`) |
+| ✅  | `WS /ws/trips/{id}`         | `use-trip-live-updates.ts` — folds `position`/`eta_updated`/`trip_started`/`trip_completed` into the tracking cache; poll stays source of truth |
 
 ---
 
@@ -196,7 +200,7 @@ whole three-step round trip; nothing above calls `/uploads/*` directly.
 
 |     | Endpoint                     | Notes                                             |
 | --- | ---------------------------- | ------------------------------------------------- |
-| ⬜  | `GET /me/pending-reviews`    |                                                   |
+| ✅  | `GET /me/pending-reviews`    | "Trajets à noter" banner on `(tabs)/activity.tsx`  |
 | ⬜  | `POST /bookings/{id}/review` | Invalidate pending reviews + the target's profile |
 | ⬜  | `GET /reviews/tags`          | `STALE_TIME.static`                               |
 | ⬜  | `POST /bookings/{id}/tip`    | Millimes                                          |
@@ -251,9 +255,9 @@ whole three-step round trip; nothing above calls `/uploads/*` directly.
 
 |     | Endpoint                         | Notes                                                                   |
 | --- | -------------------------------- | ----------------------------------------------------------------------- |
-| ⬜  | `GET /help/articles` · `/{slug}` |                                                                         |
-| ⬜  | `POST /support/tickets`          | Attach `ApiError.requestId` when opened from a failure                  |
-| ⬜  | `POST /reports`                  |                                                                         |
+| ✅  | `GET /help/articles` · `/{slug}` | `support/index.tsx` list + `support/article/[slug].tsx` (`features/support`)              |
+| ✅  | `POST /support/tickets`          | `support/ticket.tsx` — subject/category/message; carries `request_id` param            |
+| ✅  | `POST /reports`                  | `support/report.tsx` — reason chips + details; opened with `target_type`/`target_id`   |
 | ⬜  | `POST /sos`                      | Safety critical — must not be gated behind a small confirmation control |
 
 ---

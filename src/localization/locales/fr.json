@@ -32,6 +32,12 @@
     "otpLabel": "Code de vérification",
     "signOut": "Se déconnecter"
   },
+  "notifications": {
+    "title": "Notifications",
+    "markAllRead": "Tout lire",
+    "emptyTitle": "Aucune notification",
+    "emptyBody": "Vous serez prévenu ici quand votre réservation est acceptée, quand vous recevez un message et avant chaque départ."
+  },
   "errors": {
     "generic": "Une erreur est survenue. Veuillez réessayer.",
     "network": "Connexion impossible. Vérifiez votre connexion internet.",

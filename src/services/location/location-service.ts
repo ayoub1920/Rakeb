@@ -20,6 +20,14 @@ const log = createLogger('location');
 
 export type LocationPermissionStatus = 'granted' | 'denied' | 'undetermined';
 
+export type LocationSample = Coordinates & {
+  heading: number | null;
+  speed: number | null;
+  accuracy: number | null;
+};
+
+export type StopWatching = () => void;
+
 export interface LocationService {
   /** Reads the current permission without prompting. */
   getPermissionStatus(): Promise<LocationPermissionStatus>;
@@ -29,6 +37,15 @@ export interface LocationService {
   getLastKnownPosition(): Promise<Coordinates | null>;
   /** Fresh fix. Slower and powered by the GPS radio. */
   getCurrentPosition(): Promise<Coordinates | null>;
+  /**
+   * Foreground position stream — used by the driver's app during an active
+   * trip. No background permission: it stops when the app is backgrounded and
+   * the caller unsubscribes. Returns a function that stops the watch.
+   */
+  watchPosition(
+    onSample: (sample: LocationSample) => void,
+    opts?: { minIntervalMs?: number; minDistanceM?: number },
+  ): Promise<StopWatching>;
 }
 
 function toStatus(response: Location.LocationPermissionResponse): LocationPermissionStatus {
@@ -67,6 +84,31 @@ export const locationService: LocationService = {
     } catch (error) {
       log.warn('Failed to read the current position', error);
       return null;
+    }
+  },
+
+  async watchPosition(onSample, opts) {
+    try {
+      const subscription = await Location.watchPositionAsync(
+        {
+          accuracy: Location.Accuracy.Balanced,
+          timeInterval: opts?.minIntervalMs ?? 8_000,
+          distanceInterval: opts?.minDistanceM ?? 40,
+        },
+        (position) => {
+          onSample({
+            lat: position.coords.latitude,
+            lng: position.coords.longitude,
+            heading: position.coords.heading ?? null,
+            speed: position.coords.speed ?? null,
+            accuracy: position.coords.accuracy ?? null,
+          });
+        },
+      );
+      return () => subscription.remove();
+    } catch (error) {
+      log.warn('Failed to start the position watch', error);
+      return () => undefined;
     }
   },
 };

@@ -91,6 +91,31 @@ export type User = {
   member_since?: IsoDateTime | null;
 };
 
+/** `GET /users/{id}` — another member's public profile. */
+export type PublicProfile = {
+  id: Id;
+  display_name: string;
+  avatar_url: string | null;
+  rating: number | null;
+  reviews_count: number;
+  trips_as_driver: number;
+  trips_as_rider: number;
+  member_since: IsoDateTime;
+  badges: string[];
+  bio: string | null;
+};
+
+/** One review row on a public profile. */
+export type UserReview = {
+  id: Id;
+  rating: number;
+  tags: string[];
+  comment: string | null;
+  author_name: string;
+  author_avatar_url: string | null;
+  created_at: IsoDateTime;
+};
+
 // ---------------------------------------------------------------------------
 // Travel preferences — GET · PUT /me/preferences
 // ---------------------------------------------------------------------------
@@ -143,6 +168,9 @@ export type TripDriver = {
   first_name: string;
   avatar_url: string | null;
   rating: number | null;
+  reviews_count: number;
+  /** CIN + licence approved — the "vérifié" badge riders see. */
+  verified: boolean;
 };
 
 export type TripVehicle = {
@@ -169,6 +197,8 @@ export type Trip = TripSummary & {
   vehicle: TripVehicle;
   max_two_in_back: boolean;
   cancellation_policy: string;
+  /** Planned itinerary for the map (ordered `{ lat, lng }`), or `null` if none. */
+  route: Coordinates[] | null;
 };
 
 export type TripSortOption = 'departure' | 'price' | 'rating';
@@ -200,7 +230,8 @@ export type BookingStatus =
   | 'declined'
   | 'cancelled_by_rider'
   | 'cancelled_by_driver'
-  | 'expired';
+  | 'expired'
+  | 'no_show';
 
 /** `GET /bookings?status=` accepts these buckets, not the raw status. */
 export type BookingBucket = 'upcoming' | 'past' | 'cancelled';
@@ -231,6 +262,8 @@ export type BookingDetail = Booking & {
   dropoff_label: string;
   payment_method_label: string;
   cancellation_policy: string;
+  /** When an unanswered `pending` request lapses; `null` once answered. */
+  expires_at: IsoDateTime | null;
   /** The chat opened with the booking; `null` before it exists. */
   conversation_id: string | null;
 };
@@ -352,6 +385,8 @@ export type TripTracking = {
   /** Driver's last known position, or `null` before the trip starts. */
   driver_location: Coordinates | null;
   eta_minutes: number | null;
+  /** Metres still to drive to the destination, or `null` when unknown. */
+  remaining_distance_m: number | null;
   /** `normal` | `slow` | `unknown`. */
   traffic: string;
   /** True when the position is a live ping rather than a persisted sample. */
@@ -542,4 +577,40 @@ export type AdminUserDetail = AdminUserSummary & {
   referral_code: string;
   verifications: { cin: VerificationStatus; licence: VerificationStatus };
   last_seen_at: IsoDateTime | null;
+};
+
+// ---------------------------------------------------------------------------
+// Notifications — `GET /me/notifications`
+// ---------------------------------------------------------------------------
+
+/** Mirrors the backend `NotificationType` enum (`common/constants/enums.ts`). */
+export type NotificationType =
+  | 'booking_requested'
+  | 'booking_accepted'
+  | 'booking_declined'
+  | 'booking_cancelled'
+  | 'booking_expired'
+  | 'new_message'
+  | 'departure_reminder'
+  | 'trip_started'
+  | 'trip_completed'
+  | 'trip_cancelled'
+  | 'review_request'
+  | 'payment_captured'
+  | 'payment_refunded'
+  | 'wallet_credited'
+  | 'trip_alert'
+  | 'sos'
+  | 'verification_approved'
+  | 'verification_rejected';
+
+export type Notification = {
+  id: Id;
+  type: NotificationType;
+  title: string;
+  body: string;
+  /** Deep-link payload: booking_id / trip_id / conversation_id / message_id / offset. */
+  data: Record<string, string>;
+  read_at: IsoDateTime | null;
+  created_at: IsoDateTime;
 };

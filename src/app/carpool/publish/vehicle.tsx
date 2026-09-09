@@ -8,20 +8,34 @@ import {
   ErrorView,
   LoadingView,
   Screen,
+  StepIndicator,
+  WizardFooter,
 } from '@/components';
+import { useRequirePublishStep } from '@/features/carpool/publishing/use-require-step';
 import { useVehicles } from '@/features/carpool/vehicles/queries';
 import { usePublishDraftStore } from '@/stores/publish-draft-store';
 import { colors, radius, spacing } from '@/theme';
 
 /** Step 3 — pick the vehicle for this trip. */
 export default function PublishVehicleScreen() {
+  const redirecting = useRequirePublishStep('vehicle');
   const vehicleId = usePublishDraftStore((s) => s.vehicleId);
   const setVehicle = usePublishDraftStore((s) => s.setVehicle);
   const { data: vehicles, isLoading, isError, error, refetch } = useVehicles();
 
+  if (redirecting) {
+    return (
+      <Screen scrollable>
+        <Stack.Screen options={{ title: 'Véhicule' }} />
+      </Screen>
+    );
+  }
+
   return (
     <Screen scrollable>
       <Stack.Screen options={{ title: 'Véhicule' }} />
+
+      <StepIndicator step={3} total={6} />
 
       {isLoading ? (
         <LoadingView />
@@ -65,11 +79,10 @@ export default function PublishVehicleScreen() {
         </View>
       )}
 
-      <AppButton
-        label="Continuer"
-        disabled={!vehicleId}
-        onPress={() => router.push('/carpool/publish/seats')}
-        style={styles.cta}
+      <WizardFooter
+        backHref="/carpool/publish/schedule"
+        nextDisabled={!vehicleId}
+        onNext={() => router.push('/carpool/publish/seats')}
       />
     </Screen>
   );

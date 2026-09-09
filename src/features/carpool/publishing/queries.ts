@@ -28,7 +28,9 @@ import {
   getBookingRequests,
   getMyTrips,
   getPriceSuggestion,
+  markNoShow,
   publishTrip,
+  publishTripDraft,
   startTrip,
   updateTrip,
   type CompleteTripResult,
@@ -135,6 +137,9 @@ export function useAcceptBooking() {
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: publishingKeys.all });
       void queryClient.invalidateQueries({ queryKey: [QUERY_SCOPES.bookings] });
+      // Accepting opens the conversation and can flip the trip to `full`.
+      void queryClient.invalidateQueries({ queryKey: [QUERY_SCOPES.conversations] });
+      void queryClient.invalidateQueries({ queryKey: [QUERY_SCOPES.trips] });
     },
   });
 }
@@ -148,16 +153,54 @@ export function useDeclineBooking() {
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: publishingKeys.all });
       void queryClient.invalidateQueries({ queryKey: [QUERY_SCOPES.bookings] });
+      // A declined request frees the held seat back onto the trip.
+      void queryClient.invalidateQueries({ queryKey: [QUERY_SCOPES.trips] });
     },
   });
 }
 
+/**
+ * `POST /trips/{id}/start`. Pass no code to start the carpool; pass a 4-digit
+ * `passenger_code` to check a passenger in. Invalidates the trip caches so the
+ * screen flips from "Démarrer" to "Terminer" straight away.
+ */
 export function useStartTrip(tripId: string) {
   const queryClient = useQueryClient();
 
-  return useMutation<StartTripResult, ApiError, string>({
+  return useMutation<StartTripResult, ApiError, string | undefined>({
     mutationFn: (passengerCode) => startTrip(tripId, passengerCode),
-    onSuccess: () => void queryClient.invalidateQueries({ queryKey: publishingKeys.all }),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: publishingKeys.all });
+      void queryClient.invalidateQueries({ queryKey: [QUERY_SCOPES.trips] });
+      void queryClient.invalidateQueries({ queryKey: [QUERY_SCOPES.bookings] });
+    },
+  });
+}
+
+/** `POST /trips/{id}/publish` — promotes a draft. */
+export function usePublishDraft(tripId: string) {
+  const queryClient = useQueryClient();
+
+  return useMutation<Trip, ApiError, void>({
+    mutationFn: () => publishTripDraft(tripId),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: publishingKeys.all });
+      void queryClient.invalidateQueries({ queryKey: [QUERY_SCOPES.trips] });
+    },
+  });
+}
+
+/** `POST /bookings/{id}/no-show` — driver marks a passenger absent. */
+export function useMarkNoShow(tripId: string) {
+  const queryClient = useQueryClient();
+
+  return useMutation<void, ApiError, string>({
+    mutationFn: (bookingId) => markNoShow(bookingId),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: publishingKeys.requests(tripId, 'confirmed') });
+      void queryClient.invalidateQueries({ queryKey: publishingKeys.all });
+      void queryClient.invalidateQueries({ queryKey: [QUERY_SCOPES.bookings] });
+    },
   });
 }
 

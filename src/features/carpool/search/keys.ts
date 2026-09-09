@@ -12,5 +12,6 @@ import type { TripSearchParams } from './types';
 export const tripSearchKeys = {
   all: [QUERY_SCOPES.tripSearch] as const,
   results: (params: TripSearchParams) => [QUERY_SCOPES.tripSearch, 'results', params] as const,
+  map: (params: TripSearchParams) => [QUERY_SCOPES.tripSearch, 'map', params] as const,
   nearby: (lat: number, lng: number) => [QUERY_SCOPES.tripSearch, 'nearby', lat, lng] as const,
 };

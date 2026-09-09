@@ -4,7 +4,7 @@ import type {
   TripDetailResponse,
   TripSummaryResponse,
 } from '@/types/api-responses';
-import type { Place, Quote, Trip, TripSeat, TripSummary } from '@/types/models';
+import type { Coordinates, Place, Quote, Trip, TripSeat, TripSummary } from '@/types/models';
 
 /**
  * Wire → domain mappers for trips.
@@ -22,6 +22,12 @@ function place(label: string, lat: number, lng: number): Place {
   return { id: '', label, governorate: '', lat, lng };
 }
 
+/** GeoJSON `LineString` (`[lng, lat]`) → ordered `{ lat, lng }`, or `null`. */
+function toRoute(raw: TripDetailResponse['route']): Coordinates[] | null {
+  if (!raw?.coordinates || raw.coordinates.length < 2) return null;
+  return raw.coordinates.map(([lng, lat]) => ({ lat, lng }));
+}
+
 export function toTripSummary(dto: TripSummaryResponse): TripSummary {
   return {
     id: dto.id,
@@ -37,6 +43,8 @@ export function toTripSummary(dto: TripSummaryResponse): TripSummary {
       first_name: dto.driver.display_name,
       avatar_url: dto.driver.avatar_url,
       rating: dto.driver.rating > 0 ? dto.driver.rating : null,
+      reviews_count: dto.driver.reviews_count ?? 0,
+      verified: dto.driver.verified ?? false,
     },
   };
 }
@@ -55,6 +63,7 @@ export function toTrip(dto: TripDetailResponse): Trip {
     },
     max_two_in_back: dto.max_two_in_back,
     cancellation_policy: dto.cancellation_policy.summary,
+    route: toRoute(dto.route),
   };
 }
 

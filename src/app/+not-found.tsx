@@ -10,7 +10,7 @@ export default function NotFoundScreen() {
       <AppText variant="bodySmall" color="secondary">
         Le lien que vous avez suivi ne correspond à aucun écran de l’application.
       </AppText>
-      <AppButton label="Retour à l’accueil" onPress={() => router.replace('/(tabs)')} />
+      <AppButton label="Retour à l’accueil" onPress={() => router.dismissTo('/(tabs)')} />
     </Screen>
   );
 }

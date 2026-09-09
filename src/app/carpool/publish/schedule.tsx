@@ -2,7 +2,8 @@ import { Stack, router } from 'expo-router';
 import { useMemo } from 'react';
 import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 
-import { AppButton, AppText, Screen } from '@/components';
+import { AppText, Screen, StepIndicator, WizardFooter } from '@/components';
+import { useRequirePublishStep } from '@/features/carpool/publishing/use-require-step';
 import { usePublishDraftStore } from '@/stores/publish-draft-store';
 import { colors, radius, spacing } from '@/theme';
 import { formatShortDate, toIsoDate } from '@/utils/date';
@@ -25,6 +26,7 @@ const WEEKDAYS = [
 
 /** Step 2 — departure date and time, optional weekly recurrence. */
 export default function PublishScheduleScreen() {
+  const redirecting = useRequirePublishStep('schedule');
   const date = usePublishDraftStore((s) => s.departureDate);
   const time = usePublishDraftStore((s) => s.departureTime);
   const setSchedule = usePublishDraftStore((s) => s.setSchedule);
@@ -49,9 +51,19 @@ export default function PublishScheduleScreen() {
   const recurring = recurrenceDays.length > 0;
   const ready = Boolean(date) && Boolean(time) && (!recurring || Boolean(recurrenceUntil));
 
+  if (redirecting) {
+    return (
+      <Screen scrollable>
+        <Stack.Screen options={{ title: 'Date et heure' }} />
+      </Screen>
+    );
+  }
+
   return (
     <Screen scrollable>
       <Stack.Screen options={{ title: 'Date et heure' }} />
+
+      <StepIndicator step={2} total={6} />
 
       <View style={styles.sections}>
         <View style={styles.block}>
@@ -155,11 +167,10 @@ export default function PublishScheduleScreen() {
         </View>
       </View>
 
-      <AppButton
-        label="Continuer"
-        disabled={!ready}
-        onPress={() => router.push('/carpool/publish/vehicle')}
-        style={styles.cta}
+      <WizardFooter
+        backHref="/carpool/publish/route"
+        nextDisabled={!ready}
+        onNext={() => router.push('/carpool/publish/vehicle')}
       />
     </Screen>
   );

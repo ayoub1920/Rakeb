@@ -97,7 +97,7 @@ Feature: `carpool/publishing`.
 | Route                        | File                          | Title    | Endpoints                                                                 | Status |
 | ---------------------------- | ----------------------------- | -------- | ----------------------------------------------------------------------- | ------ |
 | `/carpool/trips/mine`        | `carpool/trips/mine.tsx`      | Mes trajets | `GET /me/trips?status=`                                              | **implemented** — à venir / confirmés / terminés / annulés |
-| `/carpool/requests/[tripId]` | `carpool/requests/[tripId].tsx` | Demandes | `GET /me/booking-requests`, `POST /bookings/{id}/accept` · `/decline`, `POST /trips/{id}/start` · `/complete` | **implemented** — accept/refuse, passenger check-in by code, complete |
+| `/carpool/requests/[tripId]` | `carpool/requests/[tripId].tsx` | Mon trajet | `GET /me/booking-requests` (`pending` + roster), `POST /bookings/{id}/accept` · `/decline` · `/no-show`, `POST /trips/{id}/start` · `/complete`, `DELETE /trips/{id}` | **implemented** — status badge, accept/refuse, **"Démarrer le covoiturage"** (codeless start), confirmed-passenger roster + code check-in + no-show, complete, cancel. Broadcasts the driver's GPS (`use-driver-position-broadcast`) while `in_progress` |
 
 ---
 
@@ -120,23 +120,23 @@ Feature: `carpool/vehicles`.
 | `/profile/edit`            | `profile/edit.tsx`            | Modifier mon profil   | `profile`       | `PATCH /me`, `POST /me/avatar`, `PATCH /me/role`                  | **implemented** — RHF + Zod form, avatar picker → presigned upload, role segmented control |
 | `/profile/preferences`     | `profile/preferences.tsx`     | Préférences de voyage | `profile`       | `GET · PUT /me/preferences`                                       | **implemented** — chat / music / smoking / pets, 3-way toggle |
 | `/profile/verifications`   | `profile/verifications.tsx`   | Vérifications         | `profile`       | `GET /me/verifications`, `POST /me/verifications/licence`         | **implemented**. `POST /me/verifications/cin` still ⬜ |
-| `/profile/notifications`   | `profile/notifications.tsx`   | Notifications         | `notifications` | `GET · PUT /me/notification-settings`                             | placeholder |
+| `/profile/notifications`   | `profile/notifications.tsx`   | Notifications         | `notifications` | `GET · PUT /me/notification-settings`, device sync               | **implemented** — per-event toggles + channels; OS push taps deep-link (`use-notification-response.ts`) |
 | `/profile/payment-methods` | `profile/payment-methods.tsx` | Moyens de paiement    | `payments`      | `GET · POST · PATCH · DELETE /payment-methods`, `POST /payment-methods/mobile` | **implemented** — list, add card (PSP token), add mobile money, set default, delete |
 | `/profile/wallet`          | `profile/wallet.tsx`          | Portefeuille          | `wallet`        | `GET /wallet`, `GET /wallet/transactions`, `POST /wallet/topup`, `POST /wallet/withdraw` | **implemented** — balance card, top-up, withdraw, infinite ledger |
-| `/profile/user/[id]`       | `profile/user/[id].tsx`       | Profil                | `profile`       | `GET /users/{id}`, `/reviews`                                     | placeholder |
+| `/profile/user/[id]`       | `profile/user/[id].tsx`       | Profil                | `profile`       | `GET /users/{id}`, `/reviews`                                     | **implemented** — identity, stats, badges, reviews list, report link |
 
 ---
 
 ## `support`
 
-| Route             | File                 | Title                | Endpoints               |
-| ----------------- | -------------------- | -------------------- | ----------------------- |
-| `/support`        | `support/index.tsx`  | Aide                 | `GET /help/articles`    |
-| `/support/ticket` | `support/ticket.tsx` | Contacter le support | `POST /support/tickets` |
-| `/support/report` | `support/report.tsx` | Signaler             | `POST /reports`         |
+| Route                     | File                         | Title                | Endpoints                     | Status |
+| ------------------------- | ---------------------------- | -------------------- | ----------------------------- | ------ |
+| `/support`                | `support/index.tsx`          | Aide & sécurité      | `GET /help/articles`          | **implemented** — article list + entry points |
+| `/support/article/[slug]` | `support/article/[slug].tsx` | Article              | `GET /help/articles/{slug}`   | **implemented** |
+| `/support/ticket`         | `support/ticket.tsx`         | Contacter le support | `POST /support/tickets`       | **implemented** — subject/category/message; takes `request_id` |
+| `/support/report`         | `support/report.tsx`         | Signaler             | `POST /reports`               | **implemented** — reason + details; takes `target_type` / `target_id` |
 
-All placeholders. Feature: `support`. `/support/report` takes `target_type` and
-`target_id` params.
+Feature: `src/features/support` (`api.ts`, `queries.ts`, `keys.ts`).
 
 ---
 

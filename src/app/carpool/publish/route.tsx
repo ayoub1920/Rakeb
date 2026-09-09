@@ -1,7 +1,7 @@
 import { Stack, router } from 'expo-router';
 import { Pressable, StyleSheet, View } from 'react-native';
 
-import { AppButton, AppCard, AppText, Screen } from '@/components';
+import { AppButton, AppCard, AppText, Screen, StepIndicator, WizardFooter } from '@/components';
 import { usePublishDraftStore } from '@/stores/publish-draft-store';
 import { colors, sizes, spacing } from '@/theme';
 
@@ -17,6 +17,8 @@ export default function PublishRouteScreen() {
   return (
     <Screen scrollable>
       <Stack.Screen options={{ title: 'Itinéraire' }} />
+
+      <StepIndicator step={1} total={6} />
 
       <View style={styles.sections}>
         <AppCard>
@@ -64,11 +66,10 @@ export default function PublishRouteScreen() {
         </View>
       </View>
 
-      <AppButton
-        label="Continuer"
-        disabled={!ready}
-        onPress={() => router.push('/carpool/publish/schedule')}
-        style={styles.cta}
+      <WizardFooter
+        backHref="/carpool/publish"
+        nextDisabled={!ready}
+        onNext={() => router.push('/carpool/publish/schedule')}
       />
     </Screen>
   );

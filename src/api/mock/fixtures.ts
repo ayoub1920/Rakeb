@@ -166,7 +166,14 @@ function detailFrom(summary: TripSummaryResponse): TripDetailResponse {
     },
     max_two_in_back: summary.id === 'trp_3',
     notes: null,
-    route: {},
+    route: {
+      type: 'LineString',
+      coordinates: [
+        [summary.origin_lng, summary.origin_lat],
+        ...(summary.id === 'trp_1' ? ([[10.3808, 36.1347]] as [number, number][]) : []),
+        [summary.destination_lng, summary.destination_lat],
+      ],
+    },
     created_at: '2026-08-01T00:00:00.000Z',
   };
 }
@@ -232,7 +239,13 @@ export function createMockTrip(input: {
     },
     max_two_in_back: input.max_two_in_back ?? false,
     notes: input.notes ?? null,
-    route: {},
+    route: {
+      type: 'LineString',
+      coordinates: [
+        [summary.origin_lng, summary.origin_lat],
+        [summary.destination_lng, summary.destination_lat],
+      ],
+    },
     created_at: new Date().toISOString(),
   };
   mockTripSummaries.unshift(summary);
@@ -324,6 +337,7 @@ export const mockBookings: BookingTicketResponse[] = [
     passenger_code: '4821',
     barcode_url: '',
     ics_url: '',
+    cancellation_policy: 'Annulation gratuite jusqu’à 24 h avant le départ, 50 % ensuite.',
   },
   {
     id: 'bkg_2',
@@ -344,6 +358,7 @@ export const mockBookings: BookingTicketResponse[] = [
     passenger_code: '5590',
     barcode_url: '',
     ics_url: '',
+    cancellation_policy: 'Annulation gratuite jusqu’à 24 h avant le départ, 50 % ensuite.',
   },
 ];
 
@@ -379,6 +394,7 @@ export function createMockBooking(input: {
     passenger_code: String(1000 + Math.floor(Math.random() * 9000)),
     barcode_url: '',
     ics_url: '',
+    cancellation_policy: 'Annulation gratuite jusqu’à 24 h avant le départ, 50 % ensuite.',
   };
 
   mockBookings.unshift(booking);

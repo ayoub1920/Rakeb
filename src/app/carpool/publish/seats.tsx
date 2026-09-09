@@ -1,7 +1,8 @@
 import { Stack, router } from 'expo-router';
 import { Pressable, StyleSheet, Switch, View } from 'react-native';
 
-import { AppButton, AppText, Screen } from '@/components';
+import { AppText, Screen, StepIndicator, WizardFooter } from '@/components';
+import { useRequirePublishStep } from '@/features/carpool/publishing/use-require-step';
 import { useVehicles } from '@/features/carpool/vehicles/queries';
 import {
   MAX_TRIP_SEATS,
@@ -12,6 +13,7 @@ import { colors, radius, sizes, spacing } from '@/theme';
 
 /** Step 4 — seats offered, instant book, and the "max two in the back" option. */
 export default function PublishSeatsScreen() {
+  const redirecting = useRequirePublishStep('seats');
   const seats = usePublishDraftStore((s) => s.seats);
   const setSeats = usePublishDraftStore((s) => s.setSeats);
   const instantBook = usePublishDraftStore((s) => s.instantBook);
@@ -24,9 +26,19 @@ export default function PublishSeatsScreen() {
   const vehicle = vehicles?.find((v) => v.id === vehicleId);
   const max = Math.min(MAX_TRIP_SEATS, vehicle?.seats ?? MAX_TRIP_SEATS);
 
+  if (redirecting) {
+    return (
+      <Screen scrollable>
+        <Stack.Screen options={{ title: 'Places' }} />
+      </Screen>
+    );
+  }
+
   return (
     <Screen scrollable>
       <Stack.Screen options={{ title: 'Places' }} />
+
+      <StepIndicator step={4} total={6} />
 
       <View style={styles.sections}>
         <View style={styles.block}>
@@ -71,10 +83,9 @@ export default function PublishSeatsScreen() {
         />
       </View>
 
-      <AppButton
-        label="Continuer"
-        onPress={() => router.push('/carpool/publish/price')}
-        style={styles.cta}
+      <WizardFooter
+        backHref="/carpool/publish/vehicle"
+        onNext={() => router.push('/carpool/publish/price')}
       />
     </Screen>
   );

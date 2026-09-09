@@ -75,7 +75,13 @@ export default function VehicleDetailScreen() {
                 label="Définir comme véhicule par défaut"
                 variant="secondary"
                 loading={update.isPending}
-                onPress={() => update.mutate({ is_default: true })}
+                onPress={() => {
+                  setFormError(null);
+                  update.mutate(
+                    { is_default: true },
+                    { onError: (e) => setFormError(normalizeError(e).message) },
+                  );
+                }}
               />
             ) : null}
 

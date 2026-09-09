@@ -1,5 +1,5 @@
 import { zodResolver } from '@hookform/resolvers/zod';
-import { router } from 'expo-router';
+import { router, Stack } from 'expo-router';
 import { useState } from 'react';
 import { Controller, useForm } from 'react-hook-form';
 import { Pressable, StyleSheet, View } from 'react-native';
@@ -17,7 +17,7 @@ import { colors, radius, sizes, spacing } from '@/theme';
 
 /** Step 3 of the onboarding flow's 6 progress segments — see `phone.tsx`. */
 const CURRENT_STEP = 3;
-const TOTAL_STEPS = 6;
+const TOTAL_STEPS = 3;
 
 const STRENGTH_LABEL: Record<PasswordStrength, string> = {
   weak: 'Faible',
@@ -90,6 +90,9 @@ export default function RegisterScreen() {
 
   return (
     <Screen scrollable>
+      {/* The user is already signed in by the time they reach Register; a
+          swipe-back into OTP would replay a spent otp_token. */}
+      <Stack.Screen options={{ gestureEnabled: false }} />
       <View style={styles.header}>
         <View style={styles.progress}>
           {Array.from({ length: TOTAL_STEPS }, (_, index) => (

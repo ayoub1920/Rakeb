@@ -2,10 +2,13 @@ import { router } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 
+import { flattenPages } from '@/api/pagination';
+import { useBookings } from '@/features/carpool/bookings/queries';
 import { useCurrentUser } from '@/features/profile/queries';
 import { useNearbyTrips } from '@/features/carpool/search/queries';
 import { useNearbyLocation } from '@/features/carpool/search/use-nearby-location';
 import { TripSummaryCard } from '@/features/carpool/trips/components/TripSummaryCard';
+import { NotificationBell } from '@/features/notifications/NotificationBell';
 import { PromoBannerStrip } from '@/features/payments/components/PromoBannerStrip';
 import { useServices } from '@/features/services/queries';
 import { getServiceRoute } from '@/features/services/service-registry';
@@ -21,6 +24,7 @@ import {
 } from '@/components';
 import { colors, radius, spacing } from '@/theme';
 import type { ServiceDefinition } from '@/types/models';
+import { formatIsoTime, parseIsoDate } from '@/utils/date';
 
 const NEARBY_PREVIEW_COUNT = 3;
 
@@ -32,15 +36,63 @@ export default function HomeScreen() {
 
   return (
     <Screen scrollable edges={['top', 'bottom']}>
-      <ScreenHeader title={greeting} subtitle="Où allez-vous aujourd’hui ?" />
+      <ScreenHeader
+        title={greeting}
+        subtitle="Où allez-vous aujourd’hui ?"
+        trailing={<NotificationBell />}
+      />
 
       <View style={styles.sections}>
         <SearchEntry />
+        <NextTripCard />
         <PromoBannerStrip />
         <NearbySection />
         <ServiceShortcuts />
       </View>
     </Screen>
+  );
+}
+
+/** "Votre prochain trajet" — the soonest confirmed booking within the next 24 h. */
+function NextTripCard() {
+  const { data } = useBookings('upcoming');
+  const bookings = flattenPages(data);
+
+  const soon = bookings
+    .filter((b) => b.status === 'confirmed' || b.status === 'in_progress')
+    .map((b) => ({ b, at: parseIsoDate(b.trip.departure_at) }))
+    .filter(({ at }) => at != null && at.getTime() - Date.now() < 24 * 3600_000)
+    .sort((a, b) => (a.at as Date).getTime() - (b.at as Date).getTime())[0];
+
+  if (!soon) return null;
+  const { b } = soon;
+  const live = b.status === 'in_progress';
+
+  return (
+    <AppCard
+      style={styles.nextCard}
+      onPress={() =>
+        live
+          ? router.push({
+              pathname: '/carpool/tracking/[tripId]',
+              params: { tripId: b.trip.id, bookingId: b.id },
+            })
+          : router.push(`/carpool/booking/${b.id}`)
+      }
+      accessibilityLabel="Votre prochain trajet"
+    >
+      <AppText variant="caption" color="brand">
+        {live ? 'Covoiturage en cours' : 'Votre prochain trajet'}
+      </AppText>
+      <AppText variant="subheading">
+        {b.trip.origin.governorate || b.trip.origin.label} →{' '}
+        {b.trip.destination.governorate || b.trip.destination.label}
+      </AppText>
+      <AppText variant="bodySmall" color="secondary">
+        {formatIsoTime(b.trip.departure_at)} · {b.trip.driver.first_name}
+        {live ? ' · suivre en direct' : ''}
+      </AppText>
+    </AppCard>
   );
 }
 
@@ -184,6 +236,11 @@ const styles = StyleSheet.create({
   },
   block: {
     gap: spacing.md,
+  },
+  nextCard: {
+    gap: spacing.xxs,
+    borderWidth: 1,
+    borderColor: colors.brand.primary,
   },
   tripList: {
     gap: spacing.md,

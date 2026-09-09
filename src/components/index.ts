@@ -15,3 +15,5 @@ export { ErrorView } from './ErrorView';
 export { LoadingView } from './LoadingView';
 export { Screen, type ScreenProps } from './Screen';
 export { ScreenHeader } from './ScreenHeader';
+export { StepIndicator, type StepIndicatorProps } from './StepIndicator';
+export { WizardFooter, type WizardFooterProps } from './WizardFooter';

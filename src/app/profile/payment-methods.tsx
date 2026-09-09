@@ -89,14 +89,29 @@ export default function PaymentMethodsScreen() {
               <MethodRow
                 key={method.id}
                 method={method}
-                onSetDefault={() =>
-                  setDefault.mutate({ id: method.id, is_default: true })
-                }
-                onDelete={() => remove.mutate(method.id)}
+                onSetDefault={() => {
+                  setActionError(null);
+                  setDefault.mutate(
+                    { id: method.id, is_default: true },
+                    { onError: (e) => setActionError(normalizeError(e).message) },
+                  );
+                }}
+                onDelete={() => {
+                  setActionError(null);
+                  remove.mutate(method.id, {
+                    onError: (e) => setActionError(normalizeError(e).message),
+                  });
+                }}
                 busy={setDefault.isPending || remove.isPending}
               />
             ))}
           </View>
+
+          {mode === null && actionError ? (
+            <AppText variant="bodySmall" color="error">
+              {actionError}
+            </AppText>
+          ) : null}
 
           {mode === null ? (
             <View style={styles.addButtons}>

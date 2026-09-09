@@ -2,8 +2,9 @@ import { Stack, router } from 'expo-router';
 import { useEffect } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 
-import { AppButton, AppCard, AppText, LoadingView, Screen } from '@/components';
+import { AppCard, AppText, ErrorView, LoadingView, Screen, StepIndicator, WizardFooter } from '@/components';
 import { usePriceSuggestion } from '@/features/carpool/publishing/queries';
+import { useRequirePublishStep } from '@/features/carpool/publishing/use-require-step';
 import { usePublishDraftStore } from '@/stores/publish-draft-store';
 import { colors, radius, sizes, spacing } from '@/theme';
 import { formatMillimes } from '@/utils/money';
@@ -18,18 +19,42 @@ const STEP = 500;
  * The client renders the range and clamps to it; it never computes a suggestion.
  */
 export default function PublishPriceScreen() {
+  const redirecting = useRequirePublishStep('price');
   const origin = usePublishDraftStore((s) => s.origin);
   const destination = usePublishDraftStore((s) => s.destination);
   const date = usePublishDraftStore((s) => s.departureDate);
   const price = usePublishDraftStore((s) => s.pricePerSeat);
   const setPrice = usePublishDraftStore((s) => s.setPrice);
 
-  const { data: suggestion, isLoading } = usePriceSuggestion(origin?.id, destination?.id, date);
+  const {
+    data: suggestion,
+    isLoading,
+    isError,
+    error,
+    refetch,
+  } = usePriceSuggestion(origin?.id, destination?.id, date);
 
   // Anchor on the recommended price the first time it arrives.
   useEffect(() => {
     if (suggestion && price === null) setPrice(suggestion.suggested);
   }, [suggestion, price, setPrice]);
+
+  if (redirecting) {
+    return (
+      <Screen scrollable>
+        <Stack.Screen options={{ title: 'Prix' }} />
+      </Screen>
+    );
+  }
+
+  if (isError) {
+    return (
+      <Screen scrollable>
+        <Stack.Screen options={{ title: 'Prix' }} />
+        <ErrorView error={error} onRetry={() => void refetch()} />
+      </Screen>
+    );
+  }
 
   if (isLoading || !suggestion) {
     return (
@@ -46,6 +71,8 @@ export default function PublishPriceScreen() {
   return (
     <Screen scrollable>
       <Stack.Screen options={{ title: 'Prix' }} />
+
+      <StepIndicator step={5} total={6} />
 
       <View style={styles.sections}>
         <AppText variant="title" align="center">
@@ -94,13 +121,12 @@ export default function PublishPriceScreen() {
         </Pressable>
       </View>
 
-      <AppButton
-        label="Continuer"
-        onPress={() => {
+      <WizardFooter
+        backHref="/carpool/publish/seats"
+        onNext={() => {
           setPrice(clamp(current));
           router.push('/carpool/publish/review');
         }}
-        style={styles.cta}
       />
     </Screen>
   );

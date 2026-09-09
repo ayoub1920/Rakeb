@@ -11,6 +11,7 @@ import {
   Screen,
 } from '@/components';
 import { useMyTrips } from '@/features/carpool/publishing/queries';
+import { TripStatusBadge } from '@/features/carpool/trips/components/TripStatusBadge';
 import { colors, radius, spacing } from '@/theme';
 import type { DriverTripBucket, TripSummary } from '@/types/models';
 import { formatLongDate, formatIsoTime, parseIsoDate } from '@/utils/date';
@@ -77,13 +78,12 @@ export default function MyTripsScreen() {
   );
 }
 
-function TripRow({ trip, bucket }: { trip: TripSummary; bucket: DriverTripBucket }) {
+function TripRow({ trip }: { trip: TripSummary; bucket: DriverTripBucket }) {
   const departure = parseIsoDate(trip.departure_at);
-  const openable = bucket === 'published' || bucket === 'confirmed';
 
   return (
     <AppCard
-      onPress={openable ? () => router.push(`/carpool/requests/${trip.id}`) : undefined}
+      onPress={() => router.push(`/carpool/requests/${trip.id}`)}
       accessibilityLabel={`Trajet ${trip.origin.label} vers ${trip.destination.label}`}
     >
       <View style={styles.rowTop}>
@@ -97,11 +97,13 @@ function TripRow({ trip, bucket }: { trip: TripSummary; bucket: DriverTripBucket
       <AppText variant="bodySmall" color="secondary">
         {departure ? `${formatLongDate(departure)} · ${formatIsoTime(trip.departure_at)}` : '—'}
       </AppText>
-      <AppText variant="caption" color="tertiary">
-        {trip.seats_available} place{trip.seats_available > 1 ? 's' : ''} restante
-        {trip.seats_available > 1 ? 's' : ''}
-        {openable ? ' · voir les demandes' : ''}
-      </AppText>
+      <View style={styles.rowMeta}>
+        <TripStatusBadge status={trip.status} />
+        <AppText variant="caption" color="tertiary">
+          {trip.seats_available} place{trip.seats_available > 1 ? 's' : ''} restante
+          {trip.seats_available > 1 ? 's' : ''}
+        </AppText>
+      </View>
     </AppCard>
   );
 }
@@ -124,5 +126,12 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     gap: spacing.md,
     marginBottom: spacing.xxs,
+  },
+  rowMeta: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: spacing.sm,
+    marginTop: spacing.xs,
   },
 });

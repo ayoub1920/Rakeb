@@ -1,7 +1,12 @@
 import { toCursorParams } from '@/api/pagination';
 import { apiGet } from '@/api/request';
+import type { MapMarker, MapPolyline } from '@/services/maps/types';
 import type { CursorPage, RequestOptions } from '@/types/api';
-import type { PaginatedResponse, TripSummaryResponse } from '@/types/api-responses';
+import type {
+  PaginatedResponse,
+  TripMapResponse,
+  TripSummaryResponse,
+} from '@/types/api-responses';
 import type { Coordinates, TripSummary } from '@/types/models';
 
 import { toTripSummary } from '../trips/mappers';
@@ -11,7 +16,6 @@ import type { TripSearchParams } from './types';
  * Trip search — `API Rakeb.md` §4.
  *
  * Not implemented (add here):
- *   GET /trips/search/map
  *   GET · DELETE /me/recent-searches
  *   GET · POST · DELETE /me/trip-alerts
  *
@@ -45,6 +49,48 @@ export async function searchTrips(
     next_cursor: page.next_cursor,
     total: page.total,
   };
+}
+
+/** Search results shaped for the map view: markers plus one route per trip. */
+export type TripSearchMapData = {
+  markers: MapMarker[];
+  polylines: MapPolyline[];
+  total: number;
+};
+
+/**
+ * `GET /trips/search/map`.
+ *
+ * Same filters as `/trips/search`, but returns origin/destination markers and a
+ * decoded route polyline per trip — the real geometry `rakeb-backend` computed
+ * (great-circle for `MAPS_PROVIDER=local`, real roads for `google`). The list
+ * view uses `searchTrips`; the map toggle uses this.
+ */
+export async function getTripSearchMap(
+  params: TripSearchParams,
+  options?: RequestOptions,
+): Promise<TripSearchMapData> {
+  const res = await apiGet<TripMapResponse>(
+    '/trips/search/map',
+    {
+      ...params,
+      filters: params.filters?.length ? params.filters.join(',') : undefined,
+    },
+    options,
+  );
+
+  const markers: MapMarker[] = res.markers.map((marker) => ({
+    id: `${marker.trip_id}:${marker.kind}`,
+    coordinate: { latitude: marker.lat, longitude: marker.lng },
+    kind: marker.kind === 'destination' ? 'destination' : 'origin',
+  }));
+
+  const polylines: MapPolyline[] = Object.entries(res.polylines).map(([tripId, line]) => ({
+    id: tripId,
+    coordinates: line.coordinates.map(([lng, lat]) => ({ latitude: lat, longitude: lng })),
+  }));
+
+  return { markers, polylines, total: res.total };
 }
 
 /**

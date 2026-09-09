@@ -1,17 +1,19 @@
-import type { MessageResponse } from '@/types/api-responses';
+import type { MessageResponse, NotificationResponse } from '@/types/api-responses';
 import type { Id, IsoDateTime } from '@/types/models';
 
 /**
  * Socket event contracts — verified against `rakeb-backend`'s
- * `ConversationsGateway` (`/ws/conversations`) and `TrackingGateway`
- * (`/ws/trips`). Each namespace is a separate Socket.IO connection.
+ * `ConversationsGateway` (`/ws/conversations`), `TrackingGateway` (`/ws/trips`)
+ * and `NotificationsGateway` (`/ws/notifications`). Each namespace is a separate
+ * Socket.IO connection.
  *
  * Handshake auth is `auth: { token }` (a bearer access token). Passing
  * `auth.conversation_id` / `auth.trip_id` auto-joins the room on connect;
- * otherwise the client emits `join`.
+ * otherwise the client emits `join`. `/ws/notifications` needs no join — the
+ * room is the authenticated user.
  */
 
-export type SocketNamespace = '/ws/conversations' | '/ws/trips';
+export type SocketNamespace = '/ws/conversations' | '/ws/trips' | '/ws/notifications';
 
 export type SocketStatus = 'idle' | 'connecting' | 'connected' | 'disconnected' | 'error';
 
@@ -68,6 +70,19 @@ export type TripClientEvents = {
   };
 };
 
+// --- /ws/notifications ----------------------------------------------
+
+export type NotificationServerEvents = {
+  /** A new in-app notification row; fold into the feed cache. */
+  notification: NotificationResponse;
+  /** Authoritative unread total; drives the bell badge. */
+  unread_count: { unread_count: number };
+  error: SocketError;
+};
+
+/** The room is the authenticated user — nothing for the client to send. */
+export type NotificationClientEvents = Record<string, never>;
+
 // --- namespace → event maps -----------------------------------------
 
 export type NamespaceEventMap = {
@@ -78,6 +93,10 @@ export type NamespaceEventMap = {
   '/ws/trips': {
     server: TripServerEvents;
     client: TripClientEvents;
+  };
+  '/ws/notifications': {
+    server: NotificationServerEvents;
+    client: NotificationClientEvents;
   };
 };
 

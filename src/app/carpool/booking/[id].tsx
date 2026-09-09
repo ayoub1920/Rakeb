@@ -16,6 +16,7 @@ import {
   useCancelBooking,
   useShareBooking,
 } from '@/features/carpool/bookings/queries';
+import { BookingStatusBadge } from '@/features/carpool/trips/components/TripStatusBadge';
 import { colors, radius, spacing } from '@/theme';
 import type { BookingDetail } from '@/types/models';
 import { formatLongDate, formatIsoTime, parseIsoDate } from '@/utils/date';
@@ -49,22 +50,50 @@ function Ticket({ booking }: { booking: BookingDetail }) {
   const [actionError, setActionError] = useState<string | null>(null);
 
   const departure = parseIsoDate(booking.trip.departure_at);
-  const cancelled = booking.status.startsWith('cancelled');
-  const completed = booking.status === 'completed';
-  const confirmed = booking.status === 'confirmed' || booking.status === 'in_progress';
+  const status = booking.status;
+  const inProgress = status === 'in_progress';
+  const confirmed = status === 'confirmed';
+  const completed = status === 'completed';
+  const pending = status === 'pending';
+  // Everything else — declined, expired, no_show, cancelled_by_* — is a dead end.
+  const terminated = !inProgress && !confirmed && !completed && !pending;
+  // Live = the passenger can still track / message / cancel.
+  const live = confirmed || inProgress;
+  const driverName = booking.trip.driver.first_name;
+  const when = `${departure ? formatLongDate(departure) : ''} à ${formatIsoTime(
+    booking.trip.departure_at,
+  )}`;
 
-  const heading = cancelled
-    ? 'Réservation annulée'
-    : confirmed
-      ? 'C’est confirmé !'
-      : 'Demande envoyée';
-  const sub = cancelled
-    ? 'Cette réservation n’est plus active.'
-    : confirmed
-      ? `${booking.trip.driver.first_name} vous attend ${
-          departure ? formatLongDate(departure) : ''
-        } à ${formatIsoTime(booking.trip.departure_at)}.`
-      : `${booking.trip.driver.first_name} doit accepter votre demande. Vous serez notifié dès sa réponse.`;
+  const heading = inProgress
+    ? 'Covoiturage en cours'
+    : completed
+      ? 'Trajet terminé'
+      : confirmed
+        ? 'C’est confirmé !'
+        : pending
+          ? 'Demande envoyée'
+          : status === 'declined'
+            ? 'Demande refusée'
+            : status === 'expired'
+              ? 'Demande expirée'
+              : status === 'no_show'
+                ? 'Absence signalée'
+                : 'Réservation annulée';
+  const sub = inProgress
+    ? `Vous voyagez avec ${driverName}. Suivez le trajet en direct.`
+    : completed
+      ? `Merci d’avoir voyagé avec ${driverName}.`
+      : confirmed
+        ? `${driverName} vous attend ${when}.`
+        : pending
+          ? `${driverName} doit accepter votre demande. Vous serez notifié dès sa réponse.`
+          : status === 'declined'
+            ? `${driverName} n’a pas pu accepter votre demande.`
+            : status === 'expired'
+              ? 'Le conducteur n’a pas répondu à temps. Aucun montant n’a été débité.'
+              : status === 'no_show'
+                ? 'Le conducteur a signalé que vous n’étiez pas au point de rendez-vous.'
+                : 'Cette réservation n’est plus active.';
 
   async function onShare() {
     setActionError(null);
@@ -89,11 +118,18 @@ function Ticket({ booking }: { booking: BookingDetail }) {
 
   return (
     <View style={styles.sections}>
-      <View>
+      <View style={styles.headerBlock}>
         <AppText variant="title">{heading}</AppText>
+        <BookingStatusBadge status={status} />
         <AppText variant="body" color="secondary" style={styles.sub}>
           {sub}
         </AppText>
+        {pending && booking.expires_at ? (
+          <AppText variant="caption" color="tertiary">
+            Sans réponse, la demande expire le{' '}
+            {formatLongDate(parseIsoDate(booking.expires_at) ?? new Date())}.
+          </AppText>
+        ) : null}
       </View>
 
       <AppCard>
@@ -111,7 +147,14 @@ function Ticket({ booking }: { booking: BookingDetail }) {
               : `${booking.seats} place${booking.seats > 1 ? 's' : ''}`
           }
         />
-        <Row label="Payé" value={`${formatMillimes(booking.total_price)} · ${booking.payment_method_label}`} />
+        <Row
+          label="Payé"
+          value={
+            booking.payment_method_label
+              ? `${formatMillimes(booking.total_price)} · ${booking.payment_method_label}`
+              : formatMillimes(booking.total_price)
+          }
+        />
       </AppCard>
 
       <AppCard style={styles.codes}>
@@ -155,20 +198,28 @@ function Ticket({ booking }: { booking: BookingDetail }) {
           <AppButton
             label="Retour à l’accueil"
             variant="secondary"
-            onPress={() => router.replace('/(tabs)')}
+            onPress={() => router.dismissTo('/(tabs)')}
           />
         </View>
-      ) : !cancelled ? (
+      ) : terminated ? (
+        <AppButton
+          label="Retour à l’accueil"
+          variant="secondary"
+          onPress={() => router.dismissTo('/(tabs)')}
+        />
+      ) : (
         <View style={styles.actions}>
-          <AppButton
-            label="Suivre le trajet en direct"
-            onPress={() =>
-              router.push({
-                pathname: '/carpool/tracking/[tripId]',
-                params: { tripId: booking.trip.id, bookingId: booking.id },
-              })
-            }
-          />
+          {live ? (
+            <AppButton
+              label="Suivre le trajet en direct"
+              onPress={() =>
+                router.push({
+                  pathname: '/carpool/tracking/[tripId]',
+                  params: { tripId: booking.trip.id, bookingId: booking.id },
+                })
+              }
+            />
+          ) : null}
           {booking.conversation_id ? (
             <AppButton
               label="Contacter le conducteur"
@@ -176,12 +227,14 @@ function Ticket({ booking }: { booking: BookingDetail }) {
               onPress={() => router.push(`/carpool/conversation/${booking.conversation_id}`)}
             />
           ) : null}
-          <AppButton
-            label="Partager mon trajet à un proche"
-            variant="secondary"
-            loading={share.isPending}
-            onPress={() => void onShare()}
-          />
+          {live ? (
+            <AppButton
+              label="Partager mon trajet à un proche"
+              variant="secondary"
+              loading={share.isPending}
+              onPress={() => void onShare()}
+            />
+          ) : null}
 
           {confirmCancel ? (
             <View style={styles.confirmRow}>
@@ -212,8 +265,6 @@ function Ticket({ booking }: { booking: BookingDetail }) {
             />
           )}
         </View>
-      ) : (
-        <AppButton label="Retour à l’accueil" variant="secondary" onPress={() => router.replace('/(tabs)')} />
       )}
     </View>
   );
@@ -237,8 +288,12 @@ const styles = StyleSheet.create({
     gap: spacing.xl,
     paddingTop: spacing.md,
   },
+  headerBlock: {
+    gap: spacing.sm,
+    alignItems: 'flex-start',
+  },
   sub: {
-    marginTop: spacing.sm,
+    marginTop: spacing.xs,
   },
   row: {
     flexDirection: 'row',

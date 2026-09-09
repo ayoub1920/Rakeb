@@ -12,7 +12,7 @@ import { colors, radius, sizes, spacing } from '@/theme';
 
 /** Step 1 of the onboarding flow's 6 progress segments. */
 const CURRENT_STEP = 1;
-const TOTAL_STEPS = 6;
+const TOTAL_STEPS = 3;
 
 export default function PhoneScreen() {
   const [formError, setFormError] = useState<string | null>(null);

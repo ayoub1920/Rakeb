@@ -38,7 +38,20 @@ export default function TripDetailsScreen() {
 
 function TripDetail({ trip }: { trip: Trip }) {
   const departure = parseIsoDate(trip.departure_at);
-  const soldOut = trip.seats_available <= 0;
+  const bookable = trip.status === 'published' || trip.status === 'full';
+  const soldOut = trip.seats_available <= 0 || trip.status === 'full';
+  const unavailable = !bookable;
+  const ctaLabel = unavailable
+    ? trip.status === 'cancelled'
+      ? 'Trajet annulé'
+      : trip.status === 'in_progress'
+        ? 'Covoiturage démarré'
+        : 'Trajet terminé'
+    : soldOut
+      ? 'Complet'
+      : trip.instant_book
+        ? 'Réserver'
+        : 'Demander une place';
 
   return (
     <View style={styles.sections}>
@@ -64,8 +77,12 @@ function TripDetail({ trip }: { trip: Trip }) {
           <View style={styles.driverText}>
             <AppText variant="subheading">{trip.driver.first_name}</AppText>
             <AppText variant="bodySmall" color="secondary">
-              {trip.driver.rating != null ? `★ ${trip.driver.rating.toFixed(1)}` : 'Nouveau membre'}
-              {'  ·  CIN vérifiée'}
+              {trip.driver.rating != null
+                ? `★ ${trip.driver.rating.toFixed(1)}${
+                    trip.driver.reviews_count > 0 ? ` (${trip.driver.reviews_count})` : ''
+                  }`
+                : 'Nouveau membre'}
+              {trip.driver.verified ? '  ·  Profil vérifié' : ''}
             </AppText>
           </View>
         </View>
@@ -112,8 +129,8 @@ function TripDetail({ trip }: { trip: Trip }) {
           </AppText>
         </View>
         <AppButton
-          label={soldOut ? 'Complet' : trip.instant_book ? 'Réserver' : 'Demander une place'}
-          disabled={soldOut}
+          label={ctaLabel}
+          disabled={soldOut || unavailable}
           onPress={() => router.push(`/carpool/book/${trip.id}`)}
           fullWidth={false}
           style={styles.cta}

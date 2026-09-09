@@ -37,6 +37,13 @@ export type AppEnv = {
   enableDevRoutes: boolean;
   /** Start already authenticated with a fake session. Development only. */
   devAuthMode: boolean;
+  /**
+   * Browser key for the Google Maps JavaScript API (the web map). Public by
+   * design — restrict it by HTTP referrer in the Cloud console. Empty ⇒ the web
+   * map falls back to `MapPlaceholder`. Native builds use the keys in
+   * `app.config.ts` instead.
+   */
+  googleMapsApiKey: string;
   /** Metro development build. */
   isDevelopment: boolean;
 };
@@ -47,6 +54,7 @@ export const env: AppEnv = {
   enableMockApi: readBoolean(process.env.EXPO_PUBLIC_ENABLE_MOCK_API, false),
   enableDevRoutes: readBoolean(process.env.EXPO_PUBLIC_ENABLE_DEV_ROUTES, false),
   devAuthMode: readBoolean(process.env.EXPO_PUBLIC_DEV_AUTH_MODE, false),
+  googleMapsApiKey: process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY?.trim() ?? '',
   isDevelopment: __DEV__,
 };
 

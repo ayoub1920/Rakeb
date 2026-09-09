@@ -5,6 +5,7 @@ import { useAuthStatus } from '@/auth/use-auth';
 import { useProtectedRoute } from '@/auth/use-protected-route';
 import { LoadingView } from '@/components';
 import { env } from '@/config/env';
+import { NotificationLiveUpdates } from '@/features/notifications/NotificationLiveUpdates';
 import { AppProviders } from '@/providers/AppProviders';
 import { colors } from '@/theme';
 
@@ -18,6 +19,7 @@ export default function RootLayout() {
   return (
     <AppProviders>
       <StatusBar style="dark" />
+      <NotificationLiveUpdates />
       <RootNavigator />
     </AppProviders>
   );
@@ -49,6 +51,7 @@ function RootNavigator() {
       <Stack.Screen name="support" options={{ headerShown: false }} />
       <Stack.Screen name="admin" options={{ headerShown: false }} />
       <Stack.Screen name="(modals)" options={{ headerShown: false, presentation: 'modal' }} />
+      <Stack.Screen name="notifications" options={{ title: 'Notifications' }} />
       {env.enableDevRoutes ? <Stack.Screen name="dev" options={{ headerShown: false }} /> : null}
     </Stack>
   );

@@ -1,4 +1,9 @@
 import { logout as logoutRequest, refreshSession } from '@/features/auth/api';
+import {
+  removeDeviceRegistration,
+  syncDeviceRegistration,
+} from '@/features/notifications/device-registration';
+import { socketService } from '@/services/socket/socket-service';
 import { useAuthStore } from '@/stores/auth-store';
 import { createLogger } from '@/utils/logger';
 
@@ -48,21 +53,25 @@ export async function restoreSession(): Promise<void> {
 export async function startSession(tokens: StoredTokens): Promise<void> {
   await tokenStorage.write(tokens);
   useAuthStore.getState().setSession(tokens);
+  // Register this device's push token for the new session. Best-effort: a
+  // denied permission or a simulator must not delay sign-in.
+  void syncDeviceRegistration();
 }
 
 /**
  * Clears the session everywhere.
  *
  * `notifyServer` is false when the server is the one that rejected us — there
- * is no point revoking a refresh token the API already considers dead.
- *
- * TODO (when devices are wired): also `DELETE /me/devices/{id}` so the push
- * token stops receiving this account's notifications.
+ * is no point revoking a refresh token the API already considers dead, and the
+ * device-unregister call would 401 too.
  */
 export async function endSession({ notifyServer = true } = {}): Promise<void> {
   const { refreshToken } = useAuthStore.getState();
 
   if (notifyServer && refreshToken) {
+    // Drop the push-token row while the access token is still valid, so this
+    // handset stops receiving the signed-out account's notifications.
+    await removeDeviceRegistration();
     try {
       await logoutRequest(refreshToken);
     } catch (error) {
@@ -71,6 +80,7 @@ export async function endSession({ notifyServer = true } = {}): Promise<void> {
     }
   }
 
+  socketService.disconnectAll();
   await tokenStorage.clear();
   useAuthStore.getState().clearSession();
 }
@@ -84,14 +94,25 @@ export async function endSession({ notifyServer = true } = {}): Promise<void> {
  */
 let inFlightRefresh: Promise<string | null> | null = null;
 
-export function refreshAccessToken(): Promise<string | null> {
-  inFlightRefresh ??= performRefresh().finally(() => {
+/**
+ * Refreshes the access token.
+ *
+ * `endSessionOnFailure` (default `true`) is what the Axios 401 handler wants: a
+ * failed refresh there means the session is genuinely dead. A *proactive*
+ * refresh — e.g. re-minting the token after a role change — passes `false`, so a
+ * transient network blip does not sign the user out; the next real 401 will
+ * refresh properly.
+ */
+export function refreshAccessToken(
+  { endSessionOnFailure = true }: { endSessionOnFailure?: boolean } = {},
+): Promise<string | null> {
+  inFlightRefresh ??= performRefresh(endSessionOnFailure).finally(() => {
     inFlightRefresh = null;
   });
   return inFlightRefresh;
 }
 
-async function performRefresh(): Promise<string | null> {
+async function performRefresh(endSessionOnFailure: boolean): Promise<string | null> {
   const { refreshToken } = useAuthStore.getState();
   if (!refreshToken) return null;
 
@@ -107,6 +128,10 @@ async function performRefresh(): Promise<string | null> {
     log.debug('Access token refreshed.');
     return next.accessToken;
   } catch (error) {
+    if (!endSessionOnFailure) {
+      log.warn('Proactive token refresh failed; keeping the session.', error);
+      return null;
+    }
     log.warn('Token refresh failed; the session is over.', error);
     await tokenStorage.clear();
     useAuthStore.getState().clearSession();

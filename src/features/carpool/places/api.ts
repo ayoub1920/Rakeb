@@ -1,6 +1,10 @@
 import { apiGet } from '@/api/request';
 import type { RequestOptions } from '@/types/api';
-import type { PlaceListResponse, PlaceResponse } from '@/types/api-responses';
+import type {
+  PlaceListResponse,
+  PlaceResponse,
+  ReverseGeocodeResponse,
+} from '@/types/api-responses';
 import type { Coordinates, Place } from '@/types/models';
 
 /**
@@ -46,4 +50,30 @@ export async function autocompletePlaces(
 /** `GET /places/{id}` — full record for a place the user picked from history. */
 export async function getPlace(placeId: string, options?: RequestOptions): Promise<Place> {
   return toPlace(await apiGet<PlaceResponse>(`/places/${placeId}`, undefined, options));
+}
+
+/**
+ * `GET /geocode/reverse?lat=&lng=` — turns a dropped map pin into a `Place`.
+ *
+ * The result has no server id (`id: ''`): it is an ad-hoc point, not a row in
+ * the `places` table. `publishing/api.ts` already sends `lat/lng/label` for
+ * such points and omits `place_id`. Not usable for `/trips/search`, which keys
+ * on real place ids.
+ */
+export async function reverseGeocode(
+  coords: Coordinates,
+  options?: RequestOptions,
+): Promise<Place> {
+  const dto = await apiGet<ReverseGeocodeResponse>(
+    '/geocode/reverse',
+    { lat: coords.lat, lng: coords.lng },
+    options,
+  );
+  return {
+    id: '',
+    label: dto.label,
+    governorate: dto.governorate ?? '',
+    lat: dto.lat,
+    lng: dto.lng,
+  };
 }

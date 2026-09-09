@@ -1,5 +1,6 @@
 import { useQueryClient } from '@tanstack/react-query';
-import { createContext, useCallback, useEffect, useMemo, type ReactNode } from 'react';
+import { router } from 'expo-router';
+import { createContext, useCallback, useEffect, useMemo, useRef, type ReactNode } from 'react';
 
 import { useAuthStore, type AuthStatus } from '@/stores/auth-store';
 import { createLogger } from '@/utils/logger';
@@ -43,9 +44,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // failure raised from the Axios interceptor — must drop every cached
   // response. Otherwise the next account to sign in on this device briefly
   // sees the previous one's trips.
+  const wasAuthenticated = useRef(false);
   useEffect(() => {
+    if (status === 'authenticated') wasAuthenticated.current = true;
     if (status === 'unauthenticated') {
       queryClient.clear();
+      // A single-frame redirect by the route guard would leave authenticated
+      // screens on the stack underneath /(auth)/welcome. Unwind them first.
+      if (wasAuthenticated.current) {
+        wasAuthenticated.current = false;
+        router.dismissAll();
+      }
     }
   }, [status, queryClient]);
 

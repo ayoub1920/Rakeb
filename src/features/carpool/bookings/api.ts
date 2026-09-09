@@ -37,7 +37,12 @@ const SEAT_LABELS: Record<SeatPosition, string> = {
   rear_right: 'Arrière droite',
 };
 
-const DEFAULT_POLICY =
+/**
+ * Only used for the list endpoint, which does not embed the policy. The detail
+ * / ticket endpoint returns the real, configuration-resolved
+ * `cancellation_policy` string and that is preferred whenever present.
+ */
+const FALLBACK_POLICY =
   'Annulation gratuite jusqu’à 24 h avant le départ. Passé ce délai, 50 % sont retenus pour le conducteur.';
 
 function toBooking(dto: BookingResponse): Booking {
@@ -57,7 +62,7 @@ function toBooking(dto: BookingResponse): Booking {
           price_per_seat: dto.price.base,
           seats_available: 0,
           instant_book: false,
-          driver: { id: '', first_name: '—', avatar_url: null, rating: null },
+          driver: { id: '', first_name: '—', avatar_url: null, rating: null, reviews_count: 0, verified: false },
         },
     seats: dto.seats,
     total_price: dto.price.total,
@@ -75,8 +80,10 @@ function toBookingDetail(dto: BookingResponse | BookingTicketResponse): BookingD
     seat_labels: (dto.seat_codes ?? []).map((code) => SEAT_LABELS[code as SeatPosition] ?? code),
     pickup_label: dto.trip?.origin_label ?? '—',
     dropoff_label: dto.trip?.destination_label ?? '—',
+    // Not carried by the API on this resource; the ticket shows the amount only.
     payment_method_label: '',
-    cancellation_policy: DEFAULT_POLICY,
+    cancellation_policy: ticket.cancellation_policy ?? FALLBACK_POLICY,
+    expires_at: dto.expires_at ?? null,
     conversation_id: dto.conversation_id ?? null,
   };
 }

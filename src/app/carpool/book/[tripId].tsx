@@ -16,6 +16,7 @@ import { useCreateBooking } from '@/features/carpool/bookings/queries';
 import { useQuote, useSeatMap, useTrip } from '@/features/carpool/trips/queries';
 import { usePaymentMethods, useValidatePromo } from '@/features/payments/queries';
 import { colors, radius, spacing } from '@/theme';
+import { useDiscardConfirm } from '@/utils/use-discard-confirm';
 import type {
   PaymentMethod,
   PromoValidation,
@@ -57,6 +58,23 @@ export default function BookTripScreen() {
     );
   }
 
+  // The seat map and payment methods are both required to book — surface their
+  // failure rather than rendering an empty car / no payment options.
+  if (seatMapQuery.isError || methodsQuery.isError) {
+    return (
+      <Screen scrollable>
+        <Stack.Screen options={{ title: 'Réserver' }} />
+        <ErrorView
+          error={seatMapQuery.error ?? methodsQuery.error}
+          onRetry={() => {
+            void seatMapQuery.refetch();
+            void methodsQuery.refetch();
+          }}
+        />
+      </Screen>
+    );
+  }
+
   return (
     <BookingForm
       trip={tripQuery.data}
@@ -92,6 +110,13 @@ function BookingForm({
   const seats = selected.length;
   const validatePromo = useValidatePromo(trip.id);
   const createBooking = useCreateBooking();
+
+  // Seat choice, promo and payment method are local state — a stray back would
+  // drop a validated promo code and the seat selection.
+  const discard = useDiscardConfirm((selected.length > 0 || promo !== null) && !createBooking.isSuccess, {
+    title: 'Abandonner la réservation ?',
+    message: 'Votre sélection de place et votre code promo ne seront pas conservés.',
+  });
 
   const quote = useQuote(
     trip.id,
@@ -138,6 +163,7 @@ function BookingForm({
         payment_method_id: methodId,
         promo_code: promo?.code ?? null,
       });
+      discard.bypass();
       router.replace(`/carpool/booking/${booking.id}`);
     } catch (error) {
       setFormError(normalizeError(error).message);
@@ -276,6 +302,10 @@ function BookingForm({
           <AppText variant="bodySmall" color="error">
             {formError}
           </AppText>
+        ) : quote.isError && seats > 0 ? (
+          <AppText variant="bodySmall" color="error">
+            Le tarif n’a pas pu être calculé. Vérifiez votre connexion et réessayez.
+          </AppText>
         ) : null}
 
         <AppButton
@@ -284,7 +314,7 @@ function BookingForm({
               ? `${ctaLabel} · ${formatMillimes(quote.data.total)}`
               : ctaLabel
           }
-          disabled={seats === 0 || !methodId || quote.isLoading}
+          disabled={seats === 0 || !methodId || quote.isLoading || quote.isError}
           loading={createBooking.isPending}
           onPress={() => void confirm()}
         />

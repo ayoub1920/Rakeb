@@ -86,6 +86,9 @@ export function useCancelBooking(bookingId: string) {
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: bookingKeys.all });
       void queryClient.invalidateQueries({ queryKey: [QUERY_SCOPES.trips] });
+      // A freed seat reappears in search; a refund lands in the wallet.
+      void queryClient.invalidateQueries({ queryKey: [QUERY_SCOPES.tripSearch] });
+      void queryClient.invalidateQueries({ queryKey: [QUERY_SCOPES.wallet] });
     },
   });
 }

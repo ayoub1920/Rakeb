@@ -31,8 +31,11 @@ export default function AdminLayout() {
   return (
     <Stack
       screenOptions={{
+        headerBackButtonDisplayMode: 'minimal',
         headerTintColor: colors.brand.primary,
         headerTitleStyle: { color: colors.text.primary },
+        headerShadowVisible: false,
+        contentStyle: { backgroundColor: colors.background.default },
       }}
     />
   );

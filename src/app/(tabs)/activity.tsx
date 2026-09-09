@@ -14,8 +14,10 @@ import {
   ScreenHeader,
 } from '@/components';
 import { useBookings } from '@/features/carpool/bookings/queries';
+import { usePendingReviews } from '@/features/carpool/reviews/queries';
+import { BookingStatusBadge } from '@/features/carpool/trips/components/TripStatusBadge';
 import { colors, radius, spacing } from '@/theme';
-import type { Booking, BookingBucket, BookingStatus } from '@/types/models';
+import type { Booking, BookingBucket } from '@/types/models';
 import { formatLongDate, formatIsoTime, parseIsoDate } from '@/utils/date';
 import { formatMillimes } from '@/utils/money';
 
@@ -25,23 +27,14 @@ const TABS: { bucket: BookingBucket; label: string }[] = [
   { bucket: 'cancelled', label: 'Annulés' },
 ];
 
-const STATUS_LABEL: Partial<Record<BookingStatus, string>> = {
-  pending: 'En attente d’acceptation',
-  confirmed: 'Confirmé',
-  in_progress: 'En cours',
-  completed: 'Terminé',
-  declined: 'Refusé',
-  cancelled_by_rider: 'Annulé',
-  cancelled_by_driver: 'Annulé par le conducteur',
-  expired: 'Expiré',
-};
-
 /** Activité — the passenger's bookings, split into upcoming / past / cancelled. */
 export default function ActivityScreen() {
   const { t } = useTranslation();
   const [bucket, setBucket] = useState<BookingBucket>('upcoming');
   const query = useBookings(bucket);
   const bookings = flattenPages(query.data);
+  const pendingReviews = usePendingReviews();
+  const toRate = pendingReviews.data ?? [];
 
   return (
     <Screen edges={['top', 'bottom']}>
@@ -62,6 +55,22 @@ export default function ActivityScreen() {
           </Pressable>
         ))}
       </View>
+
+      {bucket === 'past' && toRate.length > 0 ? (
+        <AppCard
+          style={styles.rateCard}
+          onPress={() => router.push(`/carpool/review/${toRate[0].booking_id}`)}
+        >
+          <AppText variant="subheading">
+            {toRate.length === 1
+              ? 'Un trajet à noter'
+              : `${toRate.length} trajets à noter`}
+          </AppText>
+          <AppText variant="bodySmall" color="secondary">
+            {toRate[0].trip_label} · avec {toRate[0].peer_first_name}
+          </AppText>
+        </AppCard>
+      ) : null}
 
       {query.isLoading ? (
         <LoadingView />
@@ -115,11 +124,7 @@ function BookingRow({ booking }: { booking: Booking }) {
         {departure ? `${formatLongDate(departure)} · ${formatIsoTime(booking.trip.departure_at)}` : '—'}
       </AppText>
       <View style={styles.rowBottom}>
-        <View style={styles.statusPill}>
-          <AppText variant="caption" color="secondary">
-            {STATUS_LABEL[booking.status] ?? booking.status}
-          </AppText>
-        </View>
+        <BookingStatusBadge status={booking.status} />
         <AppText variant="caption" color="tertiary">
           {booking.trip.driver.first_name} · {booking.reservation_code}
         </AppText>
@@ -165,10 +170,10 @@ const styles = StyleSheet.create({
     gap: spacing.md,
     marginTop: spacing.sm,
   },
-  statusPill: {
-    paddingVertical: spacing.xxs,
-    paddingHorizontal: spacing.sm,
-    borderRadius: radius.pill,
-    backgroundColor: colors.background.surface,
+  rateCard: {
+    gap: spacing.xxs,
+    marginBottom: spacing.md,
+    borderWidth: 1,
+    borderColor: colors.brand.primary,
   },
 });

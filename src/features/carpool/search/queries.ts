@@ -5,7 +5,7 @@ import { STALE_TIME } from '@/api/query-client';
 import type { ApiError, CursorPage } from '@/types/api';
 import type { Coordinates, TripSummary } from '@/types/models';
 
-import { getNearbyTrips, searchTrips } from './api';
+import { getNearbyTrips, getTripSearchMap, searchTrips, type TripSearchMapData } from './api';
 import { tripSearchKeys } from './keys';
 import type { TripSearchParams } from './types';
 
@@ -26,6 +26,22 @@ export function useTripSearch(params: TripSearchParams | null) {
     initialPageParam: INITIAL_CURSOR,
     getNextPageParam: getNextCursor,
     enabled: params !== null,
+    staleTime: STALE_TIME.volatile,
+  });
+}
+
+/**
+ * `GET /trips/search/map`.
+ *
+ * Only fired when the results screen is actually showing the map (`enabled`),
+ * so the extra call is not paid for on the default list view. Same volatile
+ * staleness as the list.
+ */
+export function useTripSearchMap(params: TripSearchParams | null, enabled: boolean) {
+  return useQuery<TripSearchMapData, ApiError>({
+    queryKey: tripSearchKeys.map(params ?? ({} as TripSearchParams)),
+    queryFn: ({ signal }) => getTripSearchMap(params as TripSearchParams, { signal }),
+    enabled: params !== null && enabled,
     staleTime: STALE_TIME.volatile,
   });
 }

@@ -1,5 +1,5 @@
 import { Stack, router } from 'expo-router';
-import { useEffect } from 'react';
+import { useState } from 'react';
 
 import {
   AppButton,
@@ -11,18 +11,24 @@ import {
 } from '@/components';
 import { licenceActionLabel, LICENCE_COPY } from '@/features/profile/licence-copy';
 import { useCurrentUser, useUpdateRole, useVerifications } from '@/features/profile/queries';
-import { usePublishDraftStore } from '@/stores/publish-draft-store';
+import { isPublishDraftEmpty, usePublishDraftStore } from '@/stores/publish-draft-store';
 import { spacing } from '@/theme';
 
 /** Entry point of the publish wizard — the licence gate. */
 export default function PublishTripScreen() {
   const reset = usePublishDraftStore((s) => s.reset);
+  // A snapshot: whether a partly-filled draft was already in progress when this
+  // screen mounted. Resetting on mount (as before) silently wiped a live draft
+  // when the wizard was re-opened from Home; instead the user chooses.
+  const [hadDraft] = useState(() => !isPublishDraftEmpty(usePublishDraftStore.getState()));
   const { data: verifications, isLoading, isError, error, refetch } = useVerifications();
   const { data: user } = useCurrentUser();
   const updateRole = useUpdateRole();
 
-  // Any entry into the wizard starts from a clean draft.
-  useEffect(() => reset(), [reset]);
+  function startFresh() {
+    reset();
+    router.push('/carpool/publish/route');
+  }
 
   if (isLoading) {
     return (
@@ -73,12 +79,29 @@ export default function PublishTripScreen() {
             </AppCard>
           ) : null}
 
-          <AppButton
-            label="Commencer"
-            onPress={() => router.push('/carpool/publish/route')}
-            disabled={needsRole}
-            style={styles.cta}
-          />
+          {hadDraft ? (
+            <>
+              <AppButton
+                label="Reprendre le brouillon"
+                onPress={() => router.push('/carpool/publish/route')}
+                disabled={needsRole}
+                style={styles.cta}
+              />
+              <AppButton
+                label="Recommencer"
+                variant="ghost"
+                onPress={startFresh}
+                disabled={needsRole}
+              />
+            </>
+          ) : (
+            <AppButton
+              label="Commencer"
+              onPress={startFresh}
+              disabled={needsRole}
+              style={styles.cta}
+            />
+          )}
         </>
       ) : (
         <AppCard style={styles.card}>

@@ -1,7 +1,7 @@
-import { apiGet } from '@/api/request';
+import { apiGet, apiPost } from '@/api/request';
 import type { RequestOptions } from '@/types/api';
 import type { TrackingResponse } from '@/types/api-responses';
-import type { TrackingState, TripTracking } from '@/types/models';
+import type { Coordinates, TrackingState, TripTracking } from '@/types/models';
 
 /**
  * Live trip position and state — `API Rakeb.md` §8.
@@ -10,8 +10,8 @@ import type { TrackingState, TripTracking } from '@/types/models';
  * `WS /ws/trips/{id}` is an enhancement layered on top by the query hook; the
  * screen must render correctly with the socket disconnected.
  *
- * Not implemented (add here):
- *   POST /trips/{id}/position — driver side, belongs to publishing
+ * `POST /trips/{id}/position` is the driver's uplink while the trip is
+ * `in_progress` — see `use-driver-position-broadcast`.
  */
 
 function toState(tripStatus: string): TrackingState {
@@ -34,7 +34,32 @@ export async function getTripTracking(
     state: toState(dto.trip_status),
     driver_location: dto.position ? { lat: dto.position.lat, lng: dto.position.lng } : null,
     eta_minutes: etaMinutes,
+    remaining_distance_m: dto.remaining_distance_m,
     traffic: dto.traffic,
     live: dto.live,
   };
+}
+
+export type DriverPosition = Coordinates & { heading?: number; speed?: number; accuracy?: number };
+
+/**
+ * `POST /trips/{id}/position` — the driver's app pushes its location while the
+ * trip is `in_progress`. Rejected (409 `TRACKING_TRIP_NOT_ACTIVE`) otherwise.
+ */
+export function pushDriverPosition(
+  tripId: string,
+  position: DriverPosition,
+  options?: RequestOptions,
+): Promise<void> {
+  return apiPost<void>(
+    `/trips/${tripId}/position`,
+    {
+      lat: position.lat,
+      lng: position.lng,
+      heading: position.heading,
+      speed: position.speed,
+      accuracy: position.accuracy,
+    },
+    options,
+  );
 }

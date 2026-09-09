@@ -1,11 +1,19 @@
+import { toCursorParams } from '@/api/pagination';
 import { apiGet, apiPatch, apiPost, apiPut } from '@/api/request';
 import { uploadFile, type PickedFile } from '@/features/uploads/api';
-import type { RequestOptions } from '@/types/api';
-import type { AvatarResponse, PreferencesResponse, VerificationsResponse } from '@/types/api-responses';
+import type { CursorPage, RequestOptions } from '@/types/api';
+import type {
+  AvatarResponse,
+  PaginatedResponse,
+  PreferencesResponse,
+  VerificationsResponse,
+} from '@/types/api-responses';
 import type {
   PreferenceLevel,
+  PublicProfile,
   TravelPreferences,
   User,
+  UserReview,
   UserRole,
   VerificationStatus,
   Verifications,
@@ -16,9 +24,76 @@ import type {
  *
  * Not implemented (add here):
  *   GET /me/stats
- *   GET /users/{id} · GET /users/{id}/reviews
  *   POST /me/verifications/cin
  */
+
+type PublicProfileResponse = {
+  id: string;
+  display_name: string;
+  avatar_url: string | null;
+  rating: number;
+  reviews_count: number;
+  trips_as_driver: number;
+  trips_as_rider: number;
+  member_since: string;
+  badges: string[];
+  bio: string | null;
+};
+
+type UserReviewResponse = {
+  id: string;
+  rating: number;
+  tags: string[];
+  comment: string | null;
+  author: { id: string; display_name: string; avatar_url: string | null };
+  created_at: string;
+};
+
+/** `GET /users/{id}` — a member's public profile. */
+export async function getPublicProfile(
+  userId: string,
+  options?: RequestOptions,
+): Promise<PublicProfile> {
+  const dto = await apiGet<PublicProfileResponse>(`/users/${userId}`, undefined, options);
+  return {
+    id: dto.id,
+    display_name: dto.display_name,
+    avatar_url: dto.avatar_url,
+    rating: dto.rating > 0 ? dto.rating : null,
+    reviews_count: dto.reviews_count,
+    trips_as_driver: dto.trips_as_driver,
+    trips_as_rider: dto.trips_as_rider,
+    member_since: dto.member_since,
+    badges: dto.badges ?? [],
+    bio: dto.bio,
+  };
+}
+
+/** `GET /users/{id}/reviews` — reviews received by a member. */
+export async function getUserReviews(
+  userId: string,
+  cursor?: string | null,
+  options?: RequestOptions,
+): Promise<CursorPage<UserReview>> {
+  const page = await apiGet<PaginatedResponse<UserReviewResponse>>(
+    `/users/${userId}/reviews`,
+    toCursorParams(cursor),
+    options,
+  );
+  return {
+    items: page.items.map((r) => ({
+      id: r.id,
+      rating: r.rating,
+      tags: r.tags ?? [],
+      comment: r.comment,
+      author_name: r.author.display_name,
+      author_avatar_url: r.author.avatar_url,
+      created_at: r.created_at,
+    })),
+    next_cursor: page.next_cursor,
+    total: page.total,
+  };
+}
 
 function toVerifications(dto: VerificationsResponse): Verifications {
   return {

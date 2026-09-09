@@ -64,21 +64,12 @@ export function regionForCoordinates(coordinates: Coordinate[]): MapRegion {
 }
 
 /**
- * The adapter in use.
+ * The adapter in use: `react-native-maps` (see `./google-map-adapter`).
  *
- * `isAvailable()` returns false and `decodePolyline` throws: no provider is
- * wired yet, and a silent empty result would look like a routing bug rather
- * than an unimplemented feature.
+ * `isAvailable()` is true on iOS/Android where the native module loads and
+ * false on web, so map screens fall back to `MapPlaceholder` there rather than
+ * crashing the bundle.
  */
-export const mapAdapter: MapAdapter = {
-  name: 'not-implemented',
-  isAvailable: () => false,
-  regionForCoordinates,
-  decodePolyline: () => {
-    throw new Error(
-      'No map provider configured. Implement MapAdapter in src/services/maps and swap the export.',
-    );
-  },
-};
+export { googleMapAdapter as mapAdapter } from './google-map-adapter';
 
 export type { Coordinate, MapMarker, MapPolyline, MapRegion };

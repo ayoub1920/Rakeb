@@ -2,7 +2,15 @@ import { Stack, router, useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
 import { FlatList, Pressable, StyleSheet, View } from 'react-native';
 
-import { AppInput, AppText, EmptyView, ErrorView, LoadingView, Screen } from '@/components';
+import {
+  AppButton,
+  AppInput,
+  AppText,
+  EmptyView,
+  ErrorView,
+  LoadingView,
+  Screen,
+} from '@/components';
 import {
   MIN_AUTOCOMPLETE_LENGTH,
   usePlaceAutocomplete,
@@ -49,10 +57,13 @@ export default function SelectPlaceModal() {
       if (field === 'origin') publishSetOrigin(place);
       else if (field === 'stop') publishAddStop(place);
       else publishSetDestination(place);
-    } else {
-      if (field === 'origin') searchSetOrigin(place);
-      else searchSetDestination(place);
+    } else if (field === 'origin') {
+      searchSetOrigin(place);
+    } else if (field === 'destination') {
+      searchSetDestination(place);
     }
+    // (search has no intermediate stops — a stray `field=stop` here is a no-op
+    // rather than silently overwriting the destination.)
     router.back();
   }
 
@@ -60,7 +71,24 @@ export default function SelectPlaceModal() {
 
   return (
     <Screen>
-      <Stack.Screen options={{ title: 'Choisir un lieu' }} />
+      <Stack.Screen
+        options={{
+          title: 'Choisir un lieu',
+          // Modal root — no native back button. Give Android an explicit exit.
+          headerLeft: () => (
+            <Pressable
+              onPress={() => router.back()}
+              accessibilityRole="button"
+              accessibilityLabel="Fermer"
+              hitSlop={8}
+            >
+              <AppText variant="body" color="brand">
+                Fermer
+              </AppText>
+            </Pressable>
+          ),
+        }}
+      />
 
       <View style={styles.field}>
         <AppInput
@@ -72,6 +100,16 @@ export default function SelectPlaceModal() {
           autoCorrect={false}
           returnKeyType="search"
         />
+        {target === 'publish' ? (
+          <AppButton
+            label="Choisir sur la carte"
+            variant="secondary"
+            onPress={() =>
+              router.push(`/(modals)/pick-on-map?field=${field ?? 'origin'}&target=publish`)
+            }
+            style={styles.mapButton}
+          />
+        ) : null}
       </View>
 
       {tooShort ? (
@@ -116,6 +154,10 @@ const styles = StyleSheet.create({
   field: {
     paddingTop: spacing.md,
     paddingBottom: spacing.lg,
+    gap: spacing.md,
+  },
+  mapButton: {
+    marginTop: spacing.xs,
   },
   list: {
     paddingBottom: spacing.xxl,

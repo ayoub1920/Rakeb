@@ -7,6 +7,7 @@ import { AppButton, AppCard, AppText, LoadingView, Screen } from '@/components';
 import { useBooking } from '@/features/carpool/bookings/queries';
 import { useReviewTags, useSubmitReview } from '@/features/carpool/reviews/queries';
 import { colors, radius, sizes, spacing } from '@/theme';
+import { useDiscardConfirm } from '@/utils/use-discard-confirm';
 import { formatMillimes } from '@/utils/money';
 
 const TIP_PRESETS = [1_000, 2_000, 5_000];
@@ -23,6 +24,12 @@ export default function ReviewScreen() {
   const [comment, setComment] = useState('');
   const [tip, setTip] = useState<number | null>(null);
   const [formError, setFormError] = useState<string | null>(null);
+
+  const discard = useDiscardConfirm(
+    (rating > 0 || selectedTags.length > 0 || comment.trim().length > 0 || tip !== null) &&
+      !submit.isSuccess,
+    { title: 'Abandonner votre avis ?', message: 'Votre note et votre commentaire seront perdus.' },
+  );
 
   const peer = booking?.trip.driver.first_name;
 
@@ -45,7 +52,8 @@ export default function ReviewScreen() {
         comment: comment.trim() || null,
         tip,
       });
-      router.replace('/(tabs)/activity');
+      discard.bypass();
+      router.dismissTo('/(tabs)/activity');
     } catch (error) {
       setFormError(normalizeError(error).message);
     }

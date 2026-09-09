@@ -138,6 +138,11 @@ export function cancelTrip(
   return apiDelete<void>(`/trips/${tripId}`, options, { reason });
 }
 
+/** `POST /trips/{id}/publish` — promotes a `draft` and schedules its reminders. */
+export async function publishTripDraft(tripId: string, options?: RequestOptions): Promise<Trip> {
+  return toTrip(await apiPost<TripDetailResponse>(`/trips/${tripId}/publish`, undefined, options));
+}
+
 // --- Booking requests --------------------------------------------
 
 function toBookingRequest(dto: BookingResponse): BookingRequest {
@@ -155,7 +160,7 @@ function toBookingRequest(dto: BookingResponse): BookingRequest {
           price_per_seat: dto.price.base,
           seats_available: 0,
           instant_book: false,
-          driver: { id: '', first_name: '—', avatar_url: null, rating: null },
+          driver: { id: '', first_name: '—', avatar_url: null, rating: null, reviews_count: 0, verified: false },
         },
     seats: dto.seats,
     total_price: dto.price.total,
@@ -212,29 +217,44 @@ export function declineBooking(
   return apiPost<void>(`/bookings/${bookingId}/decline`, { reason }, options);
 }
 
+/**
+ * `POST /bookings/{id}/no-show` — the driver marks a confirmed passenger as
+ * absent once the carpool has started. The fare is not refunded.
+ */
+export function markNoShow(bookingId: string, options?: RequestOptions): Promise<void> {
+  return apiPost<void>(`/bookings/${bookingId}/no-show`, undefined, options);
+}
+
 // --- Trip lifecycle ---------------------------------------------
 
 export type StartTripResult = {
   status: string;
+  started_at: string;
   checked_in: number;
   total: number;
+  checked_in_booking_id?: string;
 };
 
-/** `POST /trips/{id}/start` — checks a passenger in by their 4-digit code. */
+/**
+ * `POST /trips/{id}/start`.
+ *
+ * Called with no code it starts the carpool ("Démarrer le covoiturage") and
+ * moves the trip to `in_progress`. Called again with a passenger's 4-digit
+ * `passenger_code` it checks that passenger in.
+ */
 export async function startTrip(
   tripId: string,
-  passengerCode: string,
+  passengerCode?: string,
   options?: RequestOptions,
 ): Promise<StartTripResult> {
-  const dto = await apiPost<TripStartResponse>(
-    `/trips/${tripId}/start`,
-    { passenger_code: passengerCode },
-    options,
-  );
+  const body = passengerCode ? { passenger_code: passengerCode } : {};
+  const dto = await apiPost<TripStartResponse>(`/trips/${tripId}/start`, body, options);
   return {
     status: dto.status,
+    started_at: dto.started_at,
     checked_in: dto.checked_in_passengers,
     total: dto.total_passengers,
+    checked_in_booking_id: dto.checked_in_booking_id ?? undefined,
   };
 }
 

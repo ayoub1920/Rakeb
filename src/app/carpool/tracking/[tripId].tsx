@@ -4,8 +4,10 @@ import { Linking, StyleSheet, View } from 'react-native';
 import { AppButton, AppCard, AppText, ErrorView, LoadingView, Screen } from '@/components';
 import { useBooking } from '@/features/carpool/bookings/queries';
 import { useTripTracking } from '@/features/carpool/tracking/queries';
+import { useTripLiveUpdates } from '@/features/carpool/tracking/use-trip-live-updates';
 import { useTrip } from '@/features/carpool/trips/queries';
-import { MapPlaceholder } from '@/services/maps/MapPlaceholder';
+import { RakebMapView } from '@/services/maps/MapView';
+import type { MapMarker, MapPolyline } from '@/services/maps/types';
 import { colors, radius, spacing } from '@/theme';
 import type { Trip, TripTracking } from '@/types/models';
 
@@ -21,6 +23,9 @@ export default function TrackingScreen() {
   const tracking = useTripTracking(tripId);
   const trip = useTrip(tripId);
   const booking = useBooking(bookingId);
+  // Live `/ws/trips` layer — folds position/ETA events into the tracking cache.
+  // Purely additive; the poll above stays the source of truth.
+  useTripLiveUpdates(tripId);
 
   if (tracking.isLoading || trip.isLoading) {
     return (
@@ -74,26 +79,51 @@ function TrackingBody({
 }) {
   const driverName = trip?.driver.first_name ?? 'Le conducteur';
 
+  const markers: MapMarker[] = [];
+  if (trip) {
+    markers.push({
+      id: 'origin',
+      kind: 'origin',
+      coordinate: { latitude: trip.origin.lat, longitude: trip.origin.lng },
+      title: trip.origin.label,
+    });
+    markers.push({
+      id: 'destination',
+      kind: 'destination',
+      coordinate: { latitude: trip.destination.lat, longitude: trip.destination.lng },
+      title: trip.destination.label,
+    });
+  }
+  if (tracking?.driver_location) {
+    markers.push({
+      id: 'driver',
+      kind: 'driver',
+      coordinate: {
+        latitude: tracking.driver_location.lat,
+        longitude: tracking.driver_location.lng,
+      },
+      title: driverName,
+      description: tracking.live ? 'Position en direct' : 'Dernière position connue',
+    });
+  }
+
+  const polylines: MapPolyline[] =
+    trip?.route && trip.route.length >= 2
+      ? [
+          {
+            id: 'route',
+            coordinates: trip.route.map((point) => ({
+              latitude: point.lat,
+              longitude: point.lng,
+            })),
+            width: 5,
+          },
+        ]
+      : [];
+
   return (
     <View>
-      <MapPlaceholder
-        height={260}
-        markers={
-          tracking?.driver_location
-            ? [
-                {
-                  id: 'driver',
-                  kind: 'driver',
-                  coordinate: {
-                    latitude: tracking.driver_location.lat,
-                    longitude: tracking.driver_location.lng,
-                  },
-                  title: driverName,
-                },
-              ]
-            : []
-        }
-      />
+      <RakebMapView height={260} markers={markers} polylines={polylines} showsUserLocation />
 
       <View style={styles.padded}>
         <View style={styles.headline}>
@@ -105,6 +135,8 @@ function TrackingBody({
             </AppText>
           ) : null}
         </View>
+
+        <TripTimeline tracking={tracking} />
 
         {trip ? (
           <AppCard>
@@ -134,7 +166,9 @@ function TrackingBody({
               {passengerCode}
             </AppText>
             <AppText variant="bodySmall" color="secondary">
-              Donnez-le à {driverName} pour démarrer le trajet.
+              {tracking?.state === 'in_progress'
+                ? `Communiquez-le à ${driverName} à la montée.`
+                : `Donnez-le à ${driverName} au départ.`}
             </AppText>
           </AppCard>
         ) : null}
@@ -156,11 +190,80 @@ function TrackingBody({
   );
 }
 
+const TIMELINE_STEPS = ['Prévu', 'Démarré', 'En route', 'Arrivé'] as const;
+
+function currentStep(tracking: TripTracking | null): number {
+  if (!tracking) return 0;
+  if (tracking.state === 'completed') return 3;
+  if (tracking.state === 'in_progress') {
+    return tracking.driver_location || tracking.eta_minutes != null ? 2 : 1;
+  }
+  return 0;
+}
+
+function TripTimeline({ tracking }: { tracking: TripTracking | null }) {
+  const step = currentStep(tracking);
+  return (
+    <View style={styles.timeline}>
+      {TIMELINE_STEPS.map((label, index) => {
+        const done = index <= step;
+        return (
+          <View key={label} style={styles.timelineItem}>
+            <View style={[styles.timelineDot, done && styles.timelineDotOn]} />
+            {index < TIMELINE_STEPS.length - 1 ? (
+              <View style={[styles.timelineBar, index < step && styles.timelineBarOn]} />
+            ) : null}
+            <AppText
+              variant="caption"
+              color={done ? 'brand' : 'tertiary'}
+              style={styles.timelineLabel}
+            >
+              {label}
+            </AppText>
+          </View>
+        );
+      })}
+    </View>
+  );
+}
+
 const styles = StyleSheet.create({
   padded: {
     paddingHorizontal: spacing.lg,
     paddingTop: spacing.lg,
     gap: spacing.lg,
+  },
+  timeline: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+  },
+  timelineItem: {
+    flex: 1,
+    alignItems: 'center',
+  },
+  timelineDot: {
+    width: 12,
+    height: 12,
+    borderRadius: radius.pill,
+    backgroundColor: colors.border.strong,
+  },
+  timelineDotOn: {
+    backgroundColor: colors.brand.primary,
+  },
+  timelineBar: {
+    position: 'absolute',
+    top: 5,
+    left: '50%',
+    right: '-50%',
+    height: 2,
+    backgroundColor: colors.border.strong,
+  },
+  timelineBarOn: {
+    backgroundColor: colors.brand.primary,
+  },
+  timelineLabel: {
+    marginTop: spacing.xs,
+    textAlign: 'center',
   },
   headline: {
     gap: spacing.xxs,

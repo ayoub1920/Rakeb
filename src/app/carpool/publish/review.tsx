@@ -3,9 +3,10 @@ import { useState } from 'react';
 import { StyleSheet, TextInput, View } from 'react-native';
 
 import { normalizeError } from '@/api/errors';
-import { AppButton, AppCard, AppText, Screen } from '@/components';
+import { AppCard, AppText, Screen, StepIndicator, WizardFooter } from '@/components';
 import type { PublishDraft } from '@/features/carpool/publishing/api';
 import { usePublishTrip } from '@/features/carpool/publishing/queries';
+import { useRequirePublishStep } from '@/features/carpool/publishing/use-require-step';
 import { useVehicles } from '@/features/carpool/vehicles/queries';
 import { useCanPublish, usePublishDraftStore } from '@/stores/publish-draft-store';
 import { colors, radius, sizes, spacing } from '@/theme';
@@ -15,6 +16,7 @@ const WEEKDAY_LABEL = ['', 'lun', 'mar', 'mer', 'jeu', 'ven', 'sam', 'dim'];
 
 /** Step 6 — recap of the whole draft, then `POST /trips`. The only step that writes. */
 export default function PublishReviewScreen() {
+  const redirecting = useRequirePublishStep('review');
   const draft = usePublishDraftStore();
   const canPublish = useCanPublish();
   const publish = usePublishTrip();
@@ -54,9 +56,19 @@ export default function PublishReviewScreen() {
     }
   }
 
+  if (redirecting) {
+    return (
+      <Screen scrollable>
+        <Stack.Screen options={{ title: 'Vérifier et publier' }} />
+      </Screen>
+    );
+  }
+
   return (
     <Screen scrollable>
       <Stack.Screen options={{ title: 'Vérifier et publier' }} />
+
+      <StepIndicator step={6} total={6} />
 
       <View style={styles.sections}>
         <AppCard>
@@ -118,16 +130,16 @@ export default function PublishReviewScreen() {
         ) : null}
       </View>
 
-      <AppButton
-        label={
+      <WizardFooter
+        backHref="/carpool/publish/price"
+        nextLabel={
           draft.pricePerSeat != null
             ? `Publier — ${draft.seats} place${draft.seats > 1 ? 's' : ''} à ${formatMillimes(draft.pricePerSeat, { compact: true })}`
             : 'Publier'
         }
-        disabled={!canPublish}
-        loading={publish.isPending}
-        onPress={() => void onPublish()}
-        style={styles.cta}
+        nextDisabled={!canPublish}
+        nextLoading={publish.isPending}
+        onNext={() => void onPublish()}
       />
     </Screen>
   );

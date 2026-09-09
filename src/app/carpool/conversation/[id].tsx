@@ -20,6 +20,7 @@ import {
 } from '@/features/carpool/conversations/queries';
 import { useConversationLiveUpdates } from '@/features/carpool/conversations/use-live-updates';
 import { colors, radius, sizes, spacing } from '@/theme';
+import { useDiscardConfirm } from '@/utils/use-discard-confirm';
 import type { Message } from '@/types/models';
 import { formatTime, parseIsoDate } from '@/utils/date';
 
@@ -39,6 +40,13 @@ export default function ConversationScreen() {
   const messages = flattenPages(query.data);
   const send = useSendMessage(id ?? '');
   const { data: quickReplies } = useQuickReplies();
+
+  // Warn before leaving with an unsent message in the composer.
+  useDiscardConfirm(draft.trim().length > 0, {
+    title: 'Quitter la conversation ?',
+    message: 'Votre message n’a pas été envoyé.',
+    confirmLabel: 'Quitter',
+  });
 
   // Emit "typing" while the composer has focus + text, and stop shortly after
   // the user pauses or sends.
@@ -66,13 +74,23 @@ export default function ConversationScreen() {
     markRead.mutate();
   }, [id, newestId, query.isLoading, markRead]);
 
+  const [sendError, setSendError] = useState(false);
+
   function submit(body: string) {
     const text = body.trim();
     if (!text) return;
     setDraft('');
+    setSendError(false);
     if (typingStopRef.current) clearTimeout(typingStopRef.current);
     live.sendTyping(false);
-    send.mutate(text);
+    send.mutate(text, {
+      // The mutation already rolls back the optimistic bubble; put the text
+      // back in the composer and say so rather than letting it vanish.
+      onError: () => {
+        setDraft(text);
+        setSendError(true);
+      },
+    });
   }
 
   return (
@@ -108,6 +126,12 @@ export default function ConversationScreen() {
           {live.peerTyping ? (
             <AppText variant="caption" color="tertiary" style={styles.typing}>
               En train d’écrire…
+            </AppText>
+          ) : null}
+
+          {sendError ? (
+            <AppText variant="caption" color="error" style={styles.sendError}>
+              Message non envoyé. Réessayez.
             </AppText>
           ) : null}
 
@@ -226,6 +250,10 @@ const styles = StyleSheet.create({
   typing: {
     paddingHorizontal: spacing.lg,
     paddingTop: spacing.xs,
+  },
+  sendError: {
+    paddingHorizontal: spacing.lg,
+    paddingBottom: spacing.xs,
   },
   quickTrack: {
     gap: spacing.sm,

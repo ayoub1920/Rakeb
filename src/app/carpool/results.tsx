@@ -4,10 +4,10 @@ import { FlatList, Pressable, ScrollView, StyleSheet, View } from 'react-native'
 
 import { flattenPages } from '@/api/pagination';
 import { AppText, EmptyView, ErrorView, LoadingView, Screen } from '@/components';
-import { useTripSearch } from '@/features/carpool/search/queries';
+import { useTripSearch, useTripSearchMap } from '@/features/carpool/search/queries';
 import type { TripSearchFilter } from '@/features/carpool/search/types';
 import { TripSummaryCard } from '@/features/carpool/trips/components/TripSummaryCard';
-import { MapPlaceholder } from '@/services/maps/MapPlaceholder';
+import { RakebMapView } from '@/services/maps/MapView';
 import { useCarpoolSearchStore } from '@/stores/carpool-search-store';
 import { colors, radius, spacing } from '@/theme';
 import type { TripSortOption } from '@/types/models';
@@ -51,6 +51,7 @@ export default function ResultsScreen() {
   );
 
   const query = useTripSearch(params);
+  const mapQuery = useTripSearchMap(params, showMap);
   const trips = flattenPages(query.data);
 
   function toggleFilter(value: TripSearchFilter) {
@@ -67,7 +68,7 @@ export default function ResultsScreen() {
           title="Choisissez un trajet"
           description="Indiquez un départ et une arrivée pour voir les trajets disponibles."
           actionLabel="Modifier la recherche"
-          onAction={() => router.replace('/carpool/search')}
+          onAction={() => router.navigate('/carpool/search')}
         />
       </Screen>
     );
@@ -126,21 +127,28 @@ export default function ResultsScreen() {
           title="Aucun trajet ce jour-là"
           description="Essayez une autre date ou créez une alerte pour ce trajet."
           actionLabel="Modifier la recherche"
-          onAction={() => router.replace('/carpool/search')}
+          onAction={() => router.navigate('/carpool/search')}
         />
       ) : showMap ? (
         <ScrollView contentContainerStyle={styles.mapWrap}>
-          <MapPlaceholder
-            height={280}
-            markers={trips.map((trip) => ({
-              id: trip.id,
-              kind: 'origin' as const,
-              coordinate: { latitude: trip.origin.lat, longitude: trip.origin.lng },
-              title: `${trip.origin.label} → ${trip.destination.label}`,
-            }))}
+          <RakebMapView
+            height={320}
+            markers={
+              mapQuery.data?.markers ??
+              trips.map((trip) => ({
+                id: `${trip.id}:origin`,
+                kind: 'origin' as const,
+                coordinate: { latitude: trip.origin.lat, longitude: trip.origin.lng },
+                title: `${trip.origin.label} → ${trip.destination.label}`,
+              }))
+            }
+            polylines={mapQuery.data?.polylines ?? []}
           />
           <AppText variant="bodySmall" color="secondary">
-            {trips.length} trajet{trips.length > 1 ? 's' : ''} · touchez « Liste » pour réserver.
+            {(mapQuery.data?.total ?? trips.length)} trajet
+            {(mapQuery.data?.total ?? trips.length) > 1 ? 's' : ''}
+            {mapQuery.isLoading ? ' · chargement de la carte…' : ''} · touchez « Liste » pour
+            réserver.
           </AppText>
         </ScrollView>
       ) : (

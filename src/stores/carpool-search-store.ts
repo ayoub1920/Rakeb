@@ -56,7 +56,16 @@ export const useCarpoolSearchStore = create<CarpoolSearchState & CarpoolSearchAc
   reset: () => set(initialState),
 }));
 
-/** True once the store holds enough to call `/trips/search`. */
+/**
+ * True once the store holds enough to call `/trips/search`.
+ *
+ * The backend keys `/trips/search` on a place id (a local UUID or a provider
+ * place id from `/places/autocomplete`). A place with an empty id — a coordinate
+ * reverse-geocoded from "choisir sur la carte" — has no id to search on and
+ * would 422. Require a non-empty id on both ends.
+ */
 export function useCanSearch(): boolean {
-  return useCarpoolSearchStore((state) => state.origin !== null && state.destination !== null);
+  return useCarpoolSearchStore(
+    (state) => Boolean(state.origin?.id) && Boolean(state.destination?.id),
+  );
 }

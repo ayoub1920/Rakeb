@@ -15,11 +15,14 @@ import {
 } from './api';
 import { reviewKeys } from './keys';
 
-/** `GET /reviews/tags` — static catalogue data. */
+/** `GET /reviews/tags` — static catalogue data. Requires auth like every `/reviews/*`. */
 export function useReviewTags() {
+  const isAuthenticated = useIsAuthenticated();
+
   return useQuery<ReviewTag[], ApiError>({
     queryKey: reviewKeys.tags(),
     queryFn: ({ signal }) => getReviewTags({ signal }),
+    enabled: isAuthenticated,
     staleTime: STALE_TIME.static,
   });
 }
@@ -56,6 +59,8 @@ export function useSubmitReview(bookingId: string) {
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: reviewKeys.pending() });
       void queryClient.invalidateQueries({ queryKey: [QUERY_SCOPES.bookings] });
+      // A tip is a wallet debit.
+      void queryClient.invalidateQueries({ queryKey: [QUERY_SCOPES.wallet] });
     },
   });
 }

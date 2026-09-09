@@ -577,6 +577,28 @@ export const mockRoutes: MockRoute[] = [
       return place ? ok(place) : notFound('place_not_found', 'Lieu introuvable.');
     },
   },
+  {
+    // Mirrors `rakeb-backend`'s `GET /geocode/reverse` (local provider = nearest
+    // seeded place). Powers the "choisir sur la carte" picker in mock mode.
+    method: 'GET',
+    path: '/geocode/reverse',
+    handler: ({ query }) => {
+      const lat = Number(query.lat);
+      const lng = Number(query.lng);
+      if (!Number.isFinite(lat) || !Number.isFinite(lng)) {
+        return { status: 422, data: { code: 'VALIDATION_ERROR', message: 'lat/lng invalides.', field: 'lat' } };
+      }
+      const nearest = [...mockPlaces].sort(
+        (a, b) => (a.lat - lat) ** 2 + (a.lng - lng) ** 2 - ((b.lat - lat) ** 2 + (b.lng - lng) ** 2),
+      )[0];
+      return ok({
+        lat,
+        lng,
+        label: nearest ? `Près de ${nearest.name}` : `${lat.toFixed(5)}, ${lng.toFixed(5)}`,
+        governorate: nearest?.governorate ?? null,
+      });
+    },
+  },
 
   // --- Trips ----------------------------------------------------
   { method: 'GET', path: '/trips/nearby', handler: () => ok(mockTripSummaries) },
@@ -629,6 +651,50 @@ export const mockRoutes: MockRoute[] = [
         matches = [...matches].sort((a, b) => b.driver.rating - a.driver.rating);
       else matches = [...matches].sort((a, b) => a.departure_at.localeCompare(b.departure_at));
       return ok(page(matches));
+    },
+  },
+  {
+    method: 'GET',
+    path: '/trips/search/map',
+    handler: ({ query }) => {
+      const from = query.from_place_id;
+      const to = query.to_place_id;
+      const matches = mockTripSummaries.filter(
+        (trip) =>
+          (from === undefined || placeIdMatches(trip.origin_label, from)) &&
+          (to === undefined || placeIdMatches(trip.destination_label, to)),
+      );
+      const markers = matches.flatMap((trip) => [
+        {
+          trip_id: trip.id,
+          lat: trip.origin_lat,
+          lng: trip.origin_lng,
+          kind: 'origin',
+          price_per_seat: trip.price_per_seat,
+          departure_at: trip.departure_at,
+        },
+        {
+          trip_id: trip.id,
+          lat: trip.destination_lat,
+          lng: trip.destination_lng,
+          kind: 'destination',
+          price_per_seat: trip.price_per_seat,
+          departure_at: trip.departure_at,
+        },
+      ]);
+      const polylines = Object.fromEntries(
+        matches.map((trip) => [
+          trip.id,
+          {
+            type: 'LineString',
+            coordinates: [
+              [trip.origin_lng, trip.origin_lat],
+              [trip.destination_lng, trip.destination_lat],
+            ],
+          },
+        ]),
+      );
+      return ok({ markers, polylines, total: matches.length });
     },
   },
   {

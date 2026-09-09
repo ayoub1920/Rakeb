@@ -108,3 +108,87 @@ export function useCanPublish(): boolean {
       (s.recurrenceDays.length === 0 || s.recurrenceUntil !== null),
   );
 }
+
+/**
+ * The wizard steps in order, each with the route it lives at and the predicate
+ * the draft must satisfy to have legitimately reached it. Used by
+ * `useRequirePublishStep` to bounce a step opened with an incomplete draft
+ * (deep link, cold start) to the first step that still needs input.
+ */
+export const PUBLISH_STEPS = [
+  { key: 'route', path: '/carpool/publish/route', reached: (_s: PublishDraftState) => true },
+  {
+    key: 'schedule',
+    path: '/carpool/publish/schedule',
+    reached: (s: PublishDraftState) => s.origin !== null && s.destination !== null,
+  },
+  {
+    key: 'vehicle',
+    path: '/carpool/publish/vehicle',
+    reached: (s: PublishDraftState) =>
+      s.origin !== null &&
+      s.destination !== null &&
+      s.departureDate !== null &&
+      s.departureTime !== null,
+  },
+  {
+    key: 'seats',
+    path: '/carpool/publish/seats',
+    reached: (s: PublishDraftState) =>
+      s.origin !== null &&
+      s.destination !== null &&
+      s.departureDate !== null &&
+      s.departureTime !== null &&
+      s.vehicleId !== null,
+  },
+  {
+    key: 'price',
+    path: '/carpool/publish/price',
+    reached: (s: PublishDraftState) =>
+      s.origin !== null &&
+      s.destination !== null &&
+      s.departureDate !== null &&
+      s.departureTime !== null &&
+      s.vehicleId !== null,
+  },
+  {
+    key: 'review',
+    path: '/carpool/publish/review',
+    reached: (s: PublishDraftState) =>
+      s.origin !== null &&
+      s.destination !== null &&
+      s.departureDate !== null &&
+      s.departureTime !== null &&
+      s.vehicleId !== null &&
+      s.pricePerSeat !== null &&
+      s.pricePerSeat > 0,
+  },
+] as const;
+
+export type PublishStepKey = (typeof PUBLISH_STEPS)[number]['key'];
+
+/** 1-based index of `key` within the wizard. */
+export function publishStepNumber(key: PublishStepKey): number {
+  return PUBLISH_STEPS.findIndex((s) => s.key === key) + 1;
+}
+
+/** Path of the earliest step the current draft has *not* satisfied. */
+export function firstIncompletePublishStep(state: PublishDraftState): string {
+  const target = PUBLISH_STEPS.find((s) => !s.reached(state));
+  return target?.path ?? PUBLISH_STEPS[PUBLISH_STEPS.length - 1].path;
+}
+
+/** True when the draft is still pristine (nothing entered yet). */
+export function isPublishDraftEmpty(state: PublishDraftState): boolean {
+  return (
+    state.origin === null &&
+    state.destination === null &&
+    state.stops.length === 0 &&
+    state.departureDate === null &&
+    state.departureTime === null &&
+    state.vehicleId === null &&
+    state.pricePerSeat === null &&
+    state.notes === '' &&
+    state.recurrenceDays.length === 0
+  );
+}

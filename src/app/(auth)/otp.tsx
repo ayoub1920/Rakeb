@@ -14,7 +14,7 @@ import { colors, radius, sizes, spacing } from '@/theme';
 const CODE_LENGTH = 6;
 /** Step 2 of the onboarding flow's 6 progress segments — see `phone.tsx`. */
 const CURRENT_STEP = 2;
-const TOTAL_STEPS = 6;
+const TOTAL_STEPS = 3;
 const DEFAULT_RESEND_COOLDOWN_S = 60;
 /** Accepted by the mock `/auth/phone/verify` route — see `api/mock/routes.ts`. */
 const DEV_SKIP_CODE = '123456';

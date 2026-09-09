@@ -37,6 +37,13 @@ export type PlaceResponse = {
 
 export type PlaceListResponse = { items: PlaceResponse[] };
 
+export type ReverseGeocodeResponse = {
+  lat: number;
+  lng: number;
+  label: string;
+  governorate: string | null;
+};
+
 // --- Trips --------------------------------------------------------------
 
 export type TripDriverResponse = {
@@ -81,19 +88,39 @@ export type TripStopResponse = {
   eta: string | null;
 };
 
+/** GeoJSON `LineString`, coordinates as `[longitude, latitude]` pairs. */
+export type GeoLineString = { type: 'LineString'; coordinates: [number, number][] };
+
 export type TripDetailResponse = TripSummaryResponse & {
   vehicle: { id: string; make: string; model: string; color: string; photo_url: string | null };
   stops: TripStopResponse[];
   cancellation_policy: { free_before_hours: number; late_refund_percent: number; summary: string };
   max_two_in_back: boolean;
   notes: string | null;
-  route: unknown;
+  /** Planned itinerary geometry (real roads under Google routing), or `null`. */
+  route: GeoLineString | null;
   created_at: string;
 };
 
 export type SeatMapResponse = {
   seats: { seat: string; state: string }[];
   seats_available: number;
+};
+
+export type TripMapMarkerResponse = {
+  trip_id: string;
+  lat: number;
+  lng: number;
+  kind: string;
+  price_per_seat: Millimes;
+  departure_at: string;
+};
+
+export type TripMapResponse = {
+  markers: TripMapMarkerResponse[];
+  /** One GeoJSON `LineString` per trip, keyed by trip id. `[lng, lat]` pairs. */
+  polylines: Record<string, { type: string; coordinates: [number, number][] }>;
+  total: number;
 };
 
 export type QuoteResponse = {
@@ -147,6 +174,7 @@ export type BookingTicketResponse = BookingResponse & {
   passenger_code: string;
   barcode_url: string;
   ics_url: string;
+  cancellation_policy: string;
 };
 
 export type CancelBookingResponse = {
@@ -434,3 +462,19 @@ export type PendingReviewResponse = {
   target_avatar_url: string | null;
   direction: string;
 };
+
+// --- Notifications ------------------------------------------------------
+
+export type NotificationResponse = {
+  id: string;
+  type: string;
+  title: string;
+  body: string;
+  data: Record<string, string>;
+  read_at: string | null;
+  created_at: string;
+};
+
+export type UnreadCountResponse = { unread_count: number };
+
+export type MarkAllReadResponse = { updated: number };

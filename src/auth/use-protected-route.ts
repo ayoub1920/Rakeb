@@ -13,11 +13,15 @@ import { useAuthStore } from '@/stores/auth-store';
  *   signed out, outside `(auth)`  → `/(auth)/welcome`
  *   signed in,  inside  `(auth)`  → `/(tabs)`
  *
- * One route is exempt from the second rule: `/(auth)/register`. Per
- * `docs/API_FRONTEND_ANALYSIS.md` §4, `/auth/phone/verify` already returns a
- * session for a brand-new user, and the OTP screen signs in immediately — the
- * profile just isn't complete yet. Without the exemption this guard would
- * bounce a new user straight to `(tabs)` before they ever see Register.
+ * Two routes are exempt from the second rule: `/(auth)/otp` and
+ * `/(auth)/register`. Per `docs/API_FRONTEND_ANALYSIS.md` §4,
+ * `/auth/phone/verify` already returns a session for a brand-new user, and the
+ * OTP screen signs in immediately — the profile just isn't complete yet. The
+ * OTP screen then navigates itself (to `(tabs)` for a returning user, to
+ * `register` for a new one). Without exempting `otp`, this guard fires
+ * `replace('/(tabs)')` in the same tick the screen fires
+ * `replace('/(auth)/register')`, and whichever loses drops a new user on the
+ * tabs with an incomplete profile.
  *
  * It deliberately does not run while the status is `loading`: redirecting
  * during session restoration would flash the welcome screen on every cold
@@ -47,14 +51,15 @@ export function useProtectedRoute(): void {
     const route = segments[1];
     const inPublicGroup = group !== undefined && PUBLIC_GROUPS.has(group);
     const inDevRoutes = env.enableDevRoutes && group === 'dev';
-    const isCompletingRegistration = group === '(auth)' && route === 'register';
+    // The OTP screen and Register own their own post-sign-in navigation.
+    const isAuthHandoff = group === '(auth)' && (route === 'otp' || route === 'register');
 
     if (status === 'unauthenticated' && !inPublicGroup && !inDevRoutes) {
       router.replace('/(auth)/welcome');
       return;
     }
 
-    if (status === 'authenticated' && inPublicGroup && !isCompletingRegistration) {
+    if (status === 'authenticated' && inPublicGroup && !isAuthHandoff) {
       router.replace('/(tabs)');
     }
   }, [status, segments, router, navigationState?.key]);
