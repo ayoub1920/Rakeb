@@ -18,6 +18,16 @@ const SECTIONS: AdminSection[] = [
     label: 'Vérifications permis',
     description: 'File d’attente des permis soumis par les conducteurs : approuver ou refuser.',
   },
+  {
+    href: '/admin/taxi' as Href,
+    label: 'Chauffeurs taxi',
+    description: 'Candidatures de chauffeurs de taxi : documents, plaque, approbation ou refus.',
+  },
+  {
+    href: '/admin/support',
+    label: 'Chat support',
+    description: 'Conversations en direct des utilisateurs : répondre en temps réel et clôturer.',
+  },
 ];
 
 /** Landing page of the admin console — one card per section. */

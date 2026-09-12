@@ -1,4 +1,4 @@
-import * as Notifications from 'expo-notifications';
+import { isRunningInExpoGo } from 'expo';
 import { router } from 'expo-router';
 import { useEffect } from 'react';
 import { Platform } from 'react-native';
@@ -22,10 +22,22 @@ let handlerSet = false;
  *   feed rows use.
  *
  * Mount once, high in the tree. No-op on web (no OS notification tray).
+ *
+ * `expo-notifications` throws on import on Android under Expo Go (removed
+ * there since SDK 53 — see https://docs.expo.dev/develop/development-builds/introduction/).
+ * `require()` it lazily so that import never runs there instead of crashing
+ * the app; a development build is unaffected.
  */
 export function useNotificationResponse() {
   useEffect(() => {
     if (Platform.OS === 'web') return;
+    if (Platform.OS === 'android' && isRunningInExpoGo()) {
+      log.debug('Push notifications are unavailable on Android in Expo Go; skipping.');
+      return;
+    }
+
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const Notifications = require('expo-notifications') as typeof import('expo-notifications');
     // Guards the jest/jsdom environment where the native module is absent.
     if (typeof Notifications.addNotificationResponseReceivedListener !== 'function') return;
 

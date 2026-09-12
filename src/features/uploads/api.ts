@@ -25,7 +25,13 @@ export type UploadPurpose =
   | 'licence_front'
   | 'licence_back'
   | 'vehicle_photo'
-  | 'support_attachment';
+  | 'support_attachment'
+  | 'taxi_licence_front'
+  | 'taxi_licence_back'
+  | 'taxi_cin_front'
+  | 'taxi_cin_back'
+  | 'taxi_driver_photo'
+  | 'taxi_vehicle_photo';
 
 /** A document picked on-device — from `expo-image-picker` — not yet uploaded. */
 export type PickedFile = {

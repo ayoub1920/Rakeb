@@ -1,13 +1,15 @@
-# carpool/places
+# places
 
 **Status:** implemented (mock-backed) — `api.ts`, `keys.ts`, `queries.ts` wired; screens consume them. Socket / WS layers and secondary endpoints noted below remain TODO.
 
 Tunisian cities and meeting points: autocomplete, place details, and the place
 picker UI.
 
-Separate from `search` on purpose: autocomplete is consumed by the passenger
-search form **and** by the driver publish wizard's route step. Putting it inside
-`search` would make `publishing` import from a sibling feature.
+Platform-level on purpose (promoted out of `features/carpool/places`, 2026-09):
+autocomplete is consumed by the carpool passenger search form, the carpool
+publish wizard's route step, *and* the taxi passenger search screen. Any one
+of those importing from another feature would violate the cross-feature
+import ban, so this lives outside all of them, next to `services`/`uploads`.
 
 ## Endpoints — `API Rakeb.md` §4
 
@@ -16,7 +18,8 @@ search form **and** by the driver publish wizard's route step. Putting it inside
 
 ## Screens
 
-- `src/app/(modals)/select-place.tsx` — the picker, opened from search and publish
+- `src/app/(modals)/select-place.tsx` — the picker, opened from carpool search/publish and taxi search
+- `src/app/(modals)/pick-on-map.tsx` — drop-a-pin, reverse-geocodes through here
 
 ## Notes
 

@@ -19,8 +19,8 @@ import type { TripSearchParams } from './types';
  *   GET · DELETE /me/recent-searches
  *   GET · POST · DELETE /me/trip-alerts
  *
- * `/places/autocomplete` belongs to `features/carpool/places`, not here — it is
- * also used by the driver publish flow.
+ * `/places/autocomplete` belongs to `features/places` (platform-level), not
+ * here — it is also used by the driver publish flow and by taxi search.
  */
 
 /**

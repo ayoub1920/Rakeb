@@ -10,29 +10,33 @@ import {
   AppButton,
   AppCard,
   AppText,
+  Avatar,
   ErrorView,
+  Icon,
+  type IconName,
   LoadingView,
+  Rating,
   Screen,
   ScreenHeader,
 } from '@/components';
-import { colors, radius, spacing } from '@/theme';
+import { colors, spacing } from '@/theme';
 import type { User } from '@/types/models';
 import { formatMonthYear, parseIsoDate } from '@/utils/date';
 
-type MenuItem = { label: string; href: Href };
+type MenuItem = { label: string; href: Href; icon: IconName };
 
 const MENU: MenuItem[] = [
-  { label: 'Modifier mon profil', href: '/profile/edit' },
-  { label: 'Mes trajets publiés', href: '/carpool/trips/mine' },
-  { label: 'Mes véhicules', href: '/carpool/vehicles' },
-  { label: 'Préférences de voyage', href: '/profile/preferences' },
-  { label: 'Moyens de paiement', href: '/profile/payment-methods' },
-  { label: 'Portefeuille', href: '/profile/wallet' },
-  { label: 'Vérifications', href: '/profile/verifications' },
-  { label: 'Aide et sécurité', href: '/support' },
+  { label: 'Modifier mon profil', href: '/profile/edit', icon: 'person-outline' },
+  { label: 'Mes trajets publiés', href: '/carpool/trips/mine', icon: 'map-outline' },
+  { label: 'Mes véhicules', href: '/carpool/vehicles', icon: 'car-outline' },
+  { label: 'Préférences de voyage', href: '/profile/preferences', icon: 'options-outline' },
+  { label: 'Moyens de paiement', href: '/profile/payment-methods', icon: 'card-outline' },
+  { label: 'Portefeuille', href: '/profile/wallet', icon: 'wallet-outline' },
+  { label: 'Vérifications', href: '/profile/verifications', icon: 'shield-checkmark-outline' },
+  { label: 'Aide et sécurité', href: '/support', icon: 'help-buoy-outline' },
 ];
 
-const ADMIN_MENU: MenuItem[] = [{ label: 'Console admin', href: '/admin' }];
+const ADMIN_MENU: MenuItem[] = [{ label: 'Console admin', href: '/admin', icon: 'construct-outline' }];
 
 /**
  * Compte — the hub for profile, payments, wallet and support.
@@ -70,7 +74,12 @@ export default function AccountScreen() {
           ))}
         </AppCard>
 
-        <AppButton label={t('auth.signOut')} variant="ghost" onPress={() => void signOut()} />
+        <AppButton
+          label={t('auth.signOut')}
+          variant="ghost"
+          iconLeft="log-out-outline"
+          onPress={() => void signOut()}
+        />
       </View>
     </Screen>
   );
@@ -80,36 +89,30 @@ function ProfileHeader({ user }: { user: User }) {
   const { locale } = useLocale();
 
   const memberSince = parseIsoDate(user.member_since);
-  const stats = [
-    typeof user.rating === 'number' && user.rating > 0 ? `★ ${user.rating.toFixed(1)}` : null,
+  const hasRating = typeof user.rating === 'number' && user.rating > 0;
+  const tripsLabel =
     typeof user.trips_count === 'number'
       ? `${user.trips_count} trajet${user.trips_count === 1 ? '' : 's'}`
-      : null,
-  ].filter(Boolean);
+      : null;
 
   return (
-    <AppCard>
-      <View style={styles.headerRow}>
-        <View style={styles.avatar}>
-          <AppText variant="subheading" color="inverse">
-            {initials(user.display_name)}
-          </AppText>
-        </View>
-
-        <View style={styles.headerText}>
-          <AppText variant="subheading">{user.display_name}</AppText>
-          {stats.length > 0 ? (
+    <AppCard leading={<Avatar name={user.display_name} size="xl" />}>
+      <AppText variant="subheading">{user.display_name}</AppText>
+      {hasRating || tripsLabel ? (
+        <View style={styles.stats}>
+          {hasRating ? <Rating value={user.rating as number} size="sm" /> : null}
+          {tripsLabel ? (
             <AppText variant="bodySmall" color="secondary">
-              {stats.join(' · ')}
-            </AppText>
-          ) : null}
-          {memberSince ? (
-            <AppText variant="caption" color="tertiary">
-              Membre depuis {formatMonthYear(memberSince, locale)}
+              {hasRating ? `· ${tripsLabel}` : tripsLabel}
             </AppText>
           ) : null}
         </View>
-      </View>
+      ) : null}
+      {memberSince ? (
+        <AppText variant="caption" color="tertiary">
+          Membre depuis {formatMonthYear(memberSince, locale)}
+        </AppText>
+      ) : null}
     </AppCard>
   );
 }
@@ -122,21 +125,13 @@ function MenuRow({ item }: { item: MenuItem }) {
       accessibilityLabel={item.label}
       onPress={() => router.push(item.href)}
     >
-      <AppText variant="body">{item.label}</AppText>
-      <AppText variant="body" color="tertiary">
-        ›
+      <Icon name={item.icon} size="md" color="secondary" />
+      <AppText variant="body" style={styles.rowLabel}>
+        {item.label}
       </AppText>
+      <Icon name="chevron-forward" size="md" color="tertiary" />
     </Pressable>
   );
-}
-
-/** First letters of the first and last name parts; falls back to the leading two characters. */
-function initials(name: string): string {
-  const parts = name.trim().split(/\s+/).filter(Boolean);
-  if (parts.length >= 2) {
-    return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
-  }
-  return name.trim().slice(0, 2).toUpperCase();
 }
 
 const styles = StyleSheet.create({
@@ -144,29 +139,20 @@ const styles = StyleSheet.create({
     gap: spacing.xl,
     paddingTop: spacing.md,
   },
-  headerRow: {
+  stats: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: spacing.lg,
-  },
-  avatar: {
-    width: 56,
-    height: 56,
-    borderRadius: radius.pill,
-    backgroundColor: colors.brand.primary,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  headerText: {
-    flex: 1,
     gap: spacing.xxs,
   },
   row: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
+    gap: spacing.md,
     paddingVertical: spacing.md,
     paddingHorizontal: spacing.lg,
+  },
+  rowLabel: {
+    flex: 1,
   },
   rowPressed: {
     backgroundColor: colors.background.surface,

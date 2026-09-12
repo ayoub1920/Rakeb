@@ -6,6 +6,7 @@ import { spacing } from '@/theme';
 
 import { AppButton } from './AppButton';
 import { AppText } from './AppText';
+import { IconMedallion } from './IconMedallion';
 
 export type ErrorViewProps = {
   /** Anything thrown by a query or mutation; normalized to `ApiError` here. */
@@ -27,6 +28,7 @@ export function ErrorView({ error, onRetry, testID }: ErrorViewProps) {
 
   return (
     <View style={styles.container} testID={testID}>
+      <IconMedallion icon="alert-circle-outline" tone="error" size="sm" />
       <AppText variant="subheading" align="center">
         Oups
       </AppText>

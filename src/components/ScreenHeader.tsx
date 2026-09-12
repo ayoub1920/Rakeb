@@ -1,10 +1,11 @@
 import { router } from 'expo-router';
 import type { ReactNode } from 'react';
-import { Pressable, StyleSheet, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 
-import { sizes, spacing } from '@/theme';
+import { spacing } from '@/theme';
 
 import { AppText } from './AppText';
+import { IconButton } from './IconButton';
 
 export type ScreenHeaderProps = {
   title: string;
@@ -27,17 +28,14 @@ export function ScreenHeader({ title, subtitle, showBack = false, trailing }: Sc
   return (
     <View style={styles.container}>
       {showBack ? (
-        <Pressable
+        <IconButton
+          name="arrow-back"
+          variant="plain"
+          size="sm"
           onPress={() => router.back()}
-          accessibilityRole="button"
           accessibilityLabel="Retour"
-          hitSlop={sizes.hitSlop}
           style={styles.back}
-        >
-          <AppText variant="body" color="brand">
-            ←
-          </AppText>
-        </Pressable>
+        />
       ) : null}
 
       <View style={styles.titles}>
@@ -65,8 +63,7 @@ const styles = StyleSheet.create({
     paddingBottom: spacing.md,
   },
   back: {
-    minWidth: sizes.icon.lg,
-    paddingTop: spacing.xs,
+    marginTop: spacing.xxs,
   },
   titles: {
     flex: 1,

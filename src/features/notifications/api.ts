@@ -93,6 +93,31 @@ export function notificationRoute(notification: Notification): Href | null {
       return '/profile/verifications' as Href;
     case 'sos':
       return '/support' as Href;
+    case 'support_message':
+      return data.kind === 'support_chat_admin' && data.conversation_id
+        ? (`/admin/support/${data.conversation_id}` as Href)
+        : ('/support/chat' as Href);
+
+    // Taxi — a new request routes the driver straight to the dispatch
+    // screen; every ride-lifecycle event routes to the ride itself, on the
+    // side (`data.audience`) the notification was sent to.
+    case 'taxi_ride_requested':
+      return '/taxi/driver/online' as Href;
+    case 'taxi_ride_accepted':
+    case 'taxi_ride_taken':
+    case 'taxi_driver_arriving':
+    case 'taxi_driver_arrived':
+    case 'taxi_ride_started':
+    case 'taxi_ride_completed':
+    case 'taxi_ride_cancelled':
+    case 'taxi_ride_expired':
+      if (!data.ride_id) return '/taxi' as Href;
+      return data.audience === 'driver'
+        ? (`/taxi/driver/ride/${data.ride_id}` as Href)
+        : (`/taxi/passenger/ride/${data.ride_id}` as Href);
+    case 'taxi_application_approved':
+    case 'taxi_application_rejected':
+      return '/taxi/driver/status' as Href;
 
     default:
       return conversation ?? booking ?? trip;

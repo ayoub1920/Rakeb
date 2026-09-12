@@ -4,10 +4,13 @@ import { spacing } from '@/theme';
 
 import { AppButton } from './AppButton';
 import { AppText } from './AppText';
+import type { IconName } from './Icon';
+import { IconMedallion } from './IconMedallion';
 
 export type EmptyViewProps = {
   title: string;
   description?: string;
+  icon?: IconName;
   /** The one thing the user can do about it — "Modifier la recherche". */
   actionLabel?: string;
   onAction?: () => void;
@@ -15,9 +18,17 @@ export type EmptyViewProps = {
 };
 
 /** Shown when a request succeeded and returned nothing. Not an error state. */
-export function EmptyView({ title, description, actionLabel, onAction, testID }: EmptyViewProps) {
+export function EmptyView({
+  title,
+  description,
+  icon = 'file-tray-outline',
+  actionLabel,
+  onAction,
+  testID,
+}: EmptyViewProps) {
   return (
     <View style={styles.container} testID={testID}>
+      <IconMedallion icon={icon} tone="neutral" size="sm" />
       <AppText variant="subheading" align="center">
         {title}
       </AppText>

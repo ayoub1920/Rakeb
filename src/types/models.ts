@@ -601,8 +601,20 @@ export type NotificationType =
   | 'wallet_credited'
   | 'trip_alert'
   | 'sos'
+  | 'support_message'
   | 'verification_approved'
-  | 'verification_rejected';
+  | 'verification_rejected'
+  | 'taxi_ride_requested'
+  | 'taxi_ride_accepted'
+  | 'taxi_ride_taken'
+  | 'taxi_driver_arriving'
+  | 'taxi_driver_arrived'
+  | 'taxi_ride_started'
+  | 'taxi_ride_completed'
+  | 'taxi_ride_cancelled'
+  | 'taxi_ride_expired'
+  | 'taxi_application_approved'
+  | 'taxi_application_rejected';
 
 export type Notification = {
   id: Id;

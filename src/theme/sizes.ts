@@ -13,14 +13,24 @@ export const sizes = {
     minHeightMultiline: 96,
   },
   avatar: {
-    sm: 32,
+    sm: 40,
     md: 44,
-    lg: 72,
+    lg: 48,
+    xl: 56,
+    xxl: 72,
   },
   icon: {
+    xs: 10,
     sm: 16,
     md: 20,
     lg: 24,
+    xl: 28,
+  },
+  /** Circular/rounded-square tinted icon tiles — hero medallions, choice-card leads. */
+  medallion: {
+    sm: 56,
+    md: 64,
+    lg: 88,
   },
   /** Extra tap area added around small controls. */
   hitSlop: { top: 8, bottom: 8, left: 8, right: 8 },

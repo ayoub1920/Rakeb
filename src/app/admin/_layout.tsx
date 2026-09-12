@@ -2,7 +2,7 @@ import { Redirect, Stack } from 'expo-router';
 
 import { LoadingView } from '@/components';
 import { useCurrentUser, useIsAdmin } from '@/features/profile/queries';
-import { colors } from '@/theme';
+import { stackScreenOptions } from '@/theme';
 
 /**
  * Admin routes, gated on `role === 'admin'`.
@@ -28,15 +28,5 @@ export default function AdminLayout() {
     return <Redirect href="/(tabs)" />;
   }
 
-  return (
-    <Stack
-      screenOptions={{
-        headerBackButtonDisplayMode: 'minimal',
-        headerTintColor: colors.brand.primary,
-        headerTitleStyle: { color: colors.text.primary },
-        headerShadowVisible: false,
-        contentStyle: { backgroundColor: colors.background.default },
-      }}
-    />
-  );
+  return <Stack screenOptions={stackScreenOptions} />;
 }

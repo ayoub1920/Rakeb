@@ -27,6 +27,12 @@ export const QUERY_SCOPES = {
   support: 'support',
   adminLicences: 'admin-licences',
   adminUsers: 'admin-users',
+  adminSupportChat: 'admin-support-chat',
+  taxiApplication: 'taxi-application',
+  taxiRides: 'taxi-rides',
+  taxiQuote: 'taxi-quote',
+  taxiDispatch: 'taxi-dispatch',
+  adminTaxi: 'admin-taxi',
 } as const;
 
 export type QueryScope = (typeof QUERY_SCOPES)[keyof typeof QUERY_SCOPES];

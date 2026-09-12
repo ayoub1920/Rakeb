@@ -23,6 +23,7 @@ import {
   useStartTrip,
 } from '@/features/carpool/publishing/queries';
 import { useDriverPositionBroadcast } from '@/features/carpool/tracking/use-driver-position-broadcast';
+import { SupportButton } from '@/features/support/SupportButton';
 import { TripStatusBadge } from '@/features/carpool/trips/components/TripStatusBadge';
 import { useTrip } from '@/features/carpool/trips/queries';
 import { colors, radius, sizes, spacing } from '@/theme';
@@ -97,6 +98,7 @@ export default function TripRequestsScreen() {
   }
 
   return (
+    <>
     <Screen scrollable>
       <Stack.Screen options={{ title: 'Mon trajet' }} />
 
@@ -254,6 +256,8 @@ export default function TripRequestsScreen() {
         </View>
       )}
     </Screen>
+    <SupportButton bottom={24} />
+    </>
   );
 }
 

@@ -3,35 +3,42 @@ import { useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Platform, StyleSheet, View } from 'react-native';
 
 import { AppButton, AppText, Screen } from '@/components';
-import { useReverseGeocode } from '@/features/carpool/places/queries';
+import { useReverseGeocode } from '@/features/places/queries';
 import { locationService } from '@/services/location/location-service';
 import { RakebMapView } from '@/services/maps/MapView';
 import type { MapRegion } from '@/services/maps/types';
 import { usePublishDraftStore } from '@/stores/publish-draft-store';
+import { useTaxiRideStore } from '@/stores/taxi-ride-store';
 import { DEFAULT_MAP_REGION } from '@/config/constants';
 import { colors, radius, spacing } from '@/theme';
 import { createLogger } from '@/utils/logger';
 
-type PlaceField = 'origin' | 'destination' | 'stop';
+type PlaceField = 'origin' | 'destination' | 'stop' | 'pickup';
+type PlaceTarget = 'publish' | 'taxi';
 
 const log = createLogger('pick-on-map');
 
 /**
- * "Choisir sur la carte" — drop a pin for a publish route point.
+ * "Choisir sur la carte" — drop a pin for a route point.
  *
  * The centre of the map is the pin: the user pans the map under a fixed
  * crosshair, then confirms. `GET /geocode/reverse` turns the centre coordinate
- * into a labelled `Place`, which is written to the publish draft.
- *
- * Only wired for the driver publish flow — `/trips/search` keys on real place
- * ids, so an ad-hoc coordinate cannot be a search endpoint.
+ * into a labelled `Place`. `target` says which store it's written to
+ * (`publish` by default) — the driver publish wizard and taxi search both
+ * open this, since `/trips/search` keys on real place ids but taxi's
+ * `POST /taxi/rides` takes a raw coordinate, so an ad-hoc pin works for both.
  */
 export default function PickOnMapModal() {
-  const { field = 'origin' } = useLocalSearchParams<{ field?: PlaceField; target?: string }>();
+  const { field = 'origin', target = 'publish' } = useLocalSearchParams<{
+    field?: PlaceField;
+    target?: PlaceTarget;
+  }>();
 
   const setOrigin = usePublishDraftStore((s) => s.setOrigin);
   const setDestination = usePublishDraftStore((s) => s.setDestination);
   const addStop = usePublishDraftStore((s) => s.addStop);
+  const taxiSetPickup = useTaxiRideStore((s) => s.setPickup);
+  const taxiSetDestination = useTaxiRideStore((s) => s.setDestination);
 
   const reverse = useReverseGeocode();
   const [region, setRegion] = useState<MapRegion | undefined>(undefined);
@@ -70,7 +77,13 @@ export default function PickOnMapModal() {
   }, []);
 
   const title =
-    field === 'origin' ? 'Point de départ' : field === 'stop' ? 'Étape' : 'Destination';
+    field === 'origin' || field === 'pickup'
+      ? field === 'pickup'
+        ? 'Point de prise en charge'
+        : 'Point de départ'
+      : field === 'stop'
+        ? 'Étape'
+        : 'Destination';
 
   async function locateMe() {
     setLocating(true);
@@ -100,12 +113,20 @@ export default function PickOnMapModal() {
     const center = centerRef.current;
     try {
       const place = await reverse.mutateAsync({ lat: center.latitude, lng: center.longitude });
-      if (field === 'origin') setOrigin(place);
-      else if (field === 'stop') addStop(place);
-      else setDestination(place);
+      if (target === 'taxi') {
+        if (field === 'pickup') taxiSetPickup(place);
+        else taxiSetDestination(place);
+      } else if (field === 'origin') {
+        setOrigin(place);
+      } else if (field === 'stop') {
+        addStop(place);
+      } else {
+        setDestination(place);
+      }
       // This picker is pushed on top of the `select-place` modal; a bare
-      // `back()` would land there rather than on the wizard step. Close every
-      // modal so the driver is returned to `/carpool/publish/route`.
+      // `back()` would land there rather than on the screen that opened the
+      // chain. Close every modal so the user is returned to
+      // `/carpool/publish/route` or `/taxi/passenger/search`.
       if (router.canDismiss()) router.dismissAll();
       else router.back();
     } catch (error) {

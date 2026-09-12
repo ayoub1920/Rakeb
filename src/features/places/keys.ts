@@ -2,7 +2,7 @@ import { QUERY_SCOPES } from '@/api/query-keys';
 import type { Coordinates } from '@/types/models';
 
 /**
- * Query keys owned by carpool places.
+ * Query keys owned by the platform-level `places` feature.
  *
  * The autocomplete key is the trimmed term plus a coarse `near` bucket: the
  * backend biases results toward `near`, so two different locations must not

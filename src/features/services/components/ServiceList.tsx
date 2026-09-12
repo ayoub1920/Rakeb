@@ -1,12 +1,12 @@
 import { router } from 'expo-router';
-import { FlatList, StyleSheet, View } from 'react-native';
+import { FlatList, StyleSheet } from 'react-native';
 
-import { AppCard, AppText, ErrorView } from '@/components';
+import { ChoiceCard, EmptyView, ErrorView, LoadingView } from '@/components';
 import { spacing } from '@/theme';
 import type { ServiceDefinition } from '@/types/models';
 
 import { useServices } from '../queries';
-import { getServiceRoute } from '../service-registry';
+import { getServiceIcon, getServiceRoute } from '../service-registry';
 
 /**
  * The service catalogue.
@@ -19,17 +19,25 @@ import { getServiceRoute } from '../service-registry';
  * coming-soon modal.
  */
 export function ServiceList() {
-  const { data, isError, error, refetch } = useServices();
+  const { data, isLoading, isError, error, refetch } = useServices();
 
   // `placeholderData` means there is always a list to render; a failure only
   // matters once it has replaced nothing.
+  if (isLoading && !data) {
+    return <LoadingView />;
+  }
+
   if (isError && !data) {
     return <ErrorView error={error} onRetry={() => void refetch()} />;
   }
 
+  if (!data || data.length === 0) {
+    return <EmptyView icon="apps-outline" title="Aucun service pour le moment" />;
+  }
+
   return (
     <FlatList
-      data={data ?? []}
+      data={data}
       keyExtractor={(service) => service.id}
       contentContainerStyle={styles.list}
       renderItem={({ item }) => <ServiceRow service={item} />}
@@ -41,7 +49,11 @@ function ServiceRow({ service }: { service: ServiceDefinition }) {
   const route = getServiceRoute(service);
 
   return (
-    <AppCard
+    <ChoiceCard
+      icon={getServiceIcon(service)}
+      title={service.name}
+      description={service.description}
+      subtitle={service.status === 'coming_soon' ? `${service.description} · Bientôt` : undefined}
       accessibilityLabel={`${service.name}${route ? '' : ', bientôt disponible'}`}
       onPress={() => {
         if (route) {
@@ -53,22 +65,7 @@ function ServiceRow({ service }: { service: ServiceDefinition }) {
           params: { serviceName: service.name },
         });
       }}
-    >
-      <View style={styles.row}>
-        <View style={styles.text}>
-          <AppText variant="subheading">{service.name}</AppText>
-          <AppText variant="bodySmall" color="secondary">
-            {service.description}
-          </AppText>
-        </View>
-
-        {service.status === 'coming_soon' ? (
-          <AppText variant="caption" color="tertiary">
-            Bientôt
-          </AppText>
-        ) : null}
-      </View>
-    </AppCard>
+    />
   );
 }
 
@@ -76,14 +73,5 @@ const styles = StyleSheet.create({
   list: {
     gap: spacing.md,
     paddingVertical: spacing.md,
-  },
-  row: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.md,
-  },
-  text: {
-    flex: 1,
-    gap: spacing.xxs,
   },
 });

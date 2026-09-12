@@ -1,7 +1,7 @@
 import { router } from 'expo-router';
 import { Pressable, StyleSheet, View } from 'react-native';
 
-import { AppText } from '@/components';
+import { AppText, Icon } from '@/components';
 import { colors, radius, sizes, spacing } from '@/theme';
 
 import { useUnreadCount } from './queries';
@@ -24,7 +24,7 @@ export function NotificationBell() {
       hitSlop={sizes.hitSlop}
       style={styles.button}
     >
-      <AppText variant="heading">🔔</AppText>
+      <Icon name="notifications-outline" size="lg" color="primary" />
       {unread > 0 ? (
         <View style={styles.badge}>
           <AppText variant="caption" color="inverse">

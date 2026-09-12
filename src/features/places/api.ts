@@ -10,9 +10,10 @@ import type { Coordinates, Place } from '@/types/models';
 /**
  * Tunisian cities and meeting points — `API Rakeb.md` §4.
  *
- * Consumed by the passenger search form and by the driver publish wizard's
- * route step, which is why it is its own feature and not part of
- * `carpool/search`.
+ * Platform-level (promoted out of `features/carpool/places`): consumed by the
+ * carpool passenger search form, the carpool publish wizard's route step,
+ * *and* the taxi passenger search screen — three features that may not import
+ * each other, so this had to live outside all of them.
  *
  * Not implemented (add here):
  *   GET · DELETE /me/recent-searches

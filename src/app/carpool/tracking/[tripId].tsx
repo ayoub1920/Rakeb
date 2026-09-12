@@ -2,6 +2,7 @@ import { Stack, useLocalSearchParams } from 'expo-router';
 import { Linking, StyleSheet, View } from 'react-native';
 
 import { AppButton, AppCard, AppText, ErrorView, LoadingView, Screen } from '@/components';
+import { SupportButton } from '@/features/support/SupportButton';
 import { useBooking } from '@/features/carpool/bookings/queries';
 import { useTripTracking } from '@/features/carpool/tracking/queries';
 import { useTripLiveUpdates } from '@/features/carpool/tracking/use-trip-live-updates';
@@ -46,14 +47,17 @@ export default function TrackingScreen() {
   }
 
   return (
-    <Screen scrollable padded={false}>
-      <Stack.Screen options={{ title: 'Suivi en direct' }} />
-      <TrackingBody
-        tracking={tracking.data ?? null}
-        trip={trip.data ?? null}
-        passengerCode={booking.data?.passenger_code ?? null}
-      />
-    </Screen>
+    <>
+      <Screen scrollable padded={false}>
+        <Stack.Screen options={{ title: 'Suivi en direct' }} />
+        <TrackingBody
+          tracking={tracking.data ?? null}
+          trip={trip.data ?? null}
+          passengerCode={booking.data?.passenger_code ?? null}
+        />
+      </Screen>
+      <SupportButton bottom={24} />
+    </>
   );
 }
 

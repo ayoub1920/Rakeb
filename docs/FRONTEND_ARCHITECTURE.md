@@ -72,9 +72,10 @@ belongs in `src/features/<feature>`.
 features/
 ├── auth/                  phone OTP, login, register, password reset
 ├── services/              service catalogue + app config
+├── places/                autocomplete, place picker (platform-level — shared
+│                          by carpool search/publish AND taxi search)
 ├── profile/               own profile, public profiles, verifications
 ├── carpool/
-│   ├── places/            autocomplete, place picker
 │   ├── search/            trip search and filters
 │   ├── trips/             trip read model (passenger + driver)
 │   ├── bookings/          passenger bookings
@@ -83,6 +84,9 @@ features/
 │   ├── tracking/          live position, ETA
 │   ├── conversations/     messaging
 │   └── reviews/           ratings, tags, tips
+├── taxi/                  on-demand ride-hailing: driver application, ride
+│                          request/lifecycle, live tracking — a sibling of
+│                          carpool, not an extension of it
 ├── payments/              payment methods, intents, promos
 ├── wallet/                balance, top-up, withdraw, transactions
 ├── notifications/         device registration, notification settings
@@ -344,22 +348,26 @@ number; the reasoning per data class is in `API_FRONTEND_ANALYSIS.md` §5.
    is only partly built.
 5. Add fixtures to `src/api/mock/routes.ts`.
 
-### How future taxi / food services should be added
+### How future food / grocery services should be added
 
-The catalogue is data, not code. A service going live is three steps:
+Taxi is now live — see `src/app/taxi/` + `src/features/taxi/` for the worked
+example. The catalogue is data, not code; a service going live is three steps:
 
 1. **Backend** flips `status` to `"live"` in `GET /services`.
-2. **Frontend** adds a route group `src/app/taxi/` and a feature folder
-   `src/features/taxi/`.
+2. **Frontend** adds a route group `src/app/<service>/` and a feature folder
+   `src/features/<service>/`.
 3. **Register the entry route** in `src/features/services/service-registry.ts`:
    ```ts
    const SERVICE_ROUTES: Record<ServiceId, Href | null> = {
      carpool: '/carpool/search',
-     taxi: '/taxi/search', // ← was null
+     taxi: '/taxi', // a landing page choosing passenger vs. driver, not the
+                     // search screen directly — see src/app/taxi/index.tsx
      food: null,
      grocery: null,
    };
    ```
+   The entry route doesn't have to be the search screen itself — point it at
+   whatever the service's first screen should be.
 
 Nothing that renders the catalogue changes, and nothing in `features/carpool` is
 touched. Until step 3, a service with `status: "coming_soon"` — or a live one
@@ -376,7 +384,10 @@ Design tokens in `src/theme`: `colors`, `spacing`, `typography`, `radius`,
 
 Shared components: `AppText`, `AppButton`, `AppInput`, `AppCard`, `Screen`,
 `ScreenHeader`, `LoadingView`, `EmptyView`, `ErrorView`,
-`DevelopmentPlaceholder`.
+`DevelopmentPlaceholder`, plus the icon-forward set extracted from the taxi
+feature: `Icon`, `IconButton`, `IconMedallion`, `ChoiceCard`, `Avatar`,
+`StatusPill`, `Rating`, `BottomPanel`, `ActionSheet`, `PlaceFields`,
+`RouteLine`, `Callout`.
 
 This is deliberately not a design system — no variants matrix, no theming
 context, no dark mode. Tokens are a frozen object so `StyleSheet.create` stays
@@ -441,9 +452,7 @@ a utility, a query through the mock adapter, and the whole router mounting.
 - Every product screen. Route files render `DevelopmentPlaceholder`.
 - Booking, payment, tracking, chat, wallet, maps and notification flows.
 - All but eight endpoints — see `API_MAPPING.md`.
-- Icons in the tab bar (no icon set is a dependency; picking one is a design
-  decision).
-- Dark mode, animations, skeletons, empty-state illustrations.
+- Dark mode, animations, skeletons.
 - Offline persistence of the query cache.
 - The map provider (`react-native-maps` is installed but never imported;
   Android also needs a Google Maps API key in `app.json`).

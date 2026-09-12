@@ -11,18 +11,21 @@ import { TripSummaryCard } from '@/features/carpool/trips/components/TripSummary
 import { NotificationBell } from '@/features/notifications/NotificationBell';
 import { PromoBannerStrip } from '@/features/payments/components/PromoBannerStrip';
 import { useServices } from '@/features/services/queries';
-import { getServiceRoute } from '@/features/services/service-registry';
+import { getServiceIcon, getServiceRoute } from '@/features/services/service-registry';
 import {
   AppButton,
   AppCard,
   AppText,
   EmptyView,
   ErrorView,
+  Icon,
+  IconMedallion,
   LoadingView,
+  RouteLine,
   Screen,
   ScreenHeader,
 } from '@/components';
-import { colors, radius, spacing } from '@/theme';
+import { colors, opacity, radius, spacing } from '@/theme';
 import type { ServiceDefinition } from '@/types/models';
 import { formatIsoTime, parseIsoDate } from '@/utils/date';
 
@@ -71,6 +74,7 @@ function NextTripCard() {
   return (
     <AppCard
       style={styles.nextCard}
+      leading={<IconMedallion icon={live ? 'navigate' : 'calendar-outline'} shape="square" size="sm" tone={live ? 'success' : 'brand'} />}
       onPress={() =>
         live
           ? router.push({
@@ -84,10 +88,11 @@ function NextTripCard() {
       <AppText variant="caption" color="brand">
         {live ? 'Covoiturage en cours' : 'Votre prochain trajet'}
       </AppText>
-      <AppText variant="subheading">
-        {b.trip.origin.governorate || b.trip.origin.label} →{' '}
-        {b.trip.destination.governorate || b.trip.destination.label}
-      </AppText>
+      <RouteLine
+        variant="subheading"
+        originLabel={b.trip.origin.governorate || b.trip.origin.label}
+        destinationLabel={b.trip.destination.governorate || b.trip.destination.label}
+      />
       <AppText variant="bodySmall" color="secondary">
         {formatIsoTime(b.trip.departure_at)} · {b.trip.driver.first_name}
         {live ? ' · suivre en direct' : ''}
@@ -102,6 +107,7 @@ function SearchEntry() {
   return (
     <View style={styles.block}>
       <AppCard
+        leading={<IconMedallion icon="search-outline" shape="square" size="sm" />}
         onPress={() => router.push('/carpool/search')}
         accessibilityLabel="Rechercher un trajet"
       >
@@ -117,6 +123,7 @@ function SearchEntry() {
       <AppButton
         label="Publier un trajet"
         variant="secondary"
+        iconLeft="add-circle-outline"
         onPress={() => router.push('/carpool/publish')}
       />
     </View>
@@ -142,15 +149,23 @@ function NearbySection() {
       {state === 'locating' ? <LoadingView label="Localisation…" fullscreen={false} /> : null}
 
       {state === 'denied' ? (
-        <AppText variant="bodySmall" color="secondary">
-          Autorisez la localisation pour voir les trajets proches, ou lancez une recherche.
-        </AppText>
+        <EmptyView
+          icon="location-outline"
+          title="Localisation refusée"
+          description="Autorisez la localisation pour voir les trajets proches, ou lancez une recherche."
+          actionLabel="Rechercher"
+          onAction={() => router.push('/carpool/search')}
+        />
       ) : null}
 
       {state === 'unavailable' ? (
-        <AppText variant="bodySmall" color="secondary">
-          Position indisponible pour le moment. Réessayez plus tard.
-        </AppText>
+        <EmptyView
+          icon="location-outline"
+          title="Position indisponible"
+          description="Réessayez plus tard, ou lancez une recherche par ville."
+          actionLabel="Rechercher"
+          onAction={() => router.push('/carpool/search')}
+        />
       ) : null}
 
       {state === 'ready' ? (
@@ -221,6 +236,7 @@ function ServiceChip({ service }: { service: ServiceDefinition }) {
         router.push({ pathname: '/(modals)/coming-soon', params: { serviceName: service.name } });
       }}
     >
+      <Icon name={getServiceIcon(service)} size="lg" color={route ? 'brand' : 'tertiary'} />
       <AppText variant="label">{service.name}</AppText>
       <AppText variant="caption" color="tertiary">
         {route ? 'Disponible' : 'Bientôt'}
@@ -260,6 +276,6 @@ const styles = StyleSheet.create({
     gap: spacing.xxs,
   },
   chipPressed: {
-    opacity: 0.9,
+    opacity: opacity.pressed,
   },
 });

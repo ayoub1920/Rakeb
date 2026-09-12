@@ -4,6 +4,7 @@ import { FlatList, Pressable, StyleSheet, View } from 'react-native';
 
 import {
   AppText,
+  Avatar,
   EmptyView,
   ErrorView,
   LoadingView,
@@ -11,7 +12,7 @@ import {
   ScreenHeader,
 } from '@/components';
 import { useConversations } from '@/features/carpool/conversations/queries';
-import { colors, radius, spacing } from '@/theme';
+import { colors, opacity, radius, spacing } from '@/theme';
 import type { Conversation } from '@/types/models';
 import { formatRelative, parseIsoDate } from '@/utils/date';
 
@@ -31,6 +32,7 @@ export default function MessagesScreen() {
         <ErrorView error={query.error} onRetry={() => void query.refetch()} />
       ) : conversations.length === 0 ? (
         <EmptyView
+          icon="chatbubbles-outline"
           title="Aucune conversation"
           description="Une discussion s’ouvre dès que vous réservez un trajet."
         />
@@ -57,11 +59,7 @@ function ConversationRow({ conversation }: { conversation: Conversation }) {
       accessibilityLabel={`Conversation avec ${conversation.peer.first_name}, ${conversation.trip_label}`}
       style={({ pressed }) => [styles.row, pressed && styles.rowPressed]}
     >
-      <View style={styles.avatar}>
-        <AppText variant="subheading" color="inverse">
-          {conversation.peer.first_name.slice(0, 1).toUpperCase()}
-        </AppText>
-      </View>
+      <Avatar name={conversation.peer.first_name} size="md" />
 
       <View style={styles.body}>
         <View style={styles.topLine}>
@@ -104,15 +102,7 @@ const styles = StyleSheet.create({
     paddingVertical: spacing.md,
   },
   rowPressed: {
-    opacity: 0.7,
-  },
-  avatar: {
-    width: 44,
-    height: 44,
-    borderRadius: radius.pill,
-    backgroundColor: colors.brand.primary,
-    alignItems: 'center',
-    justifyContent: 'center',
+    opacity: opacity.pressed,
   },
   body: {
     flex: 1,

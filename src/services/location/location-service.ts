@@ -1,4 +1,5 @@
 import * as Location from 'expo-location';
+import { Platform } from 'react-native';
 
 import type { Coordinates } from '@/types/models';
 import { createLogger } from '@/utils/logger';
@@ -58,6 +59,59 @@ function toCoordinates(position: Location.LocationObject | null): Coordinates | 
   return { lat: position.coords.latitude, lng: position.coords.longitude };
 }
 
+function finiteOrNull(value: number | null | undefined): number | null {
+  return typeof value === 'number' && Number.isFinite(value) ? value : null;
+}
+
+/**
+ * Web position stream, using the browser Geolocation API directly.
+ *
+ * `expo-location@19` on web wires `LocationEventEmitter` to the *new*
+ * `expo-modules-core` `EventEmitter`, but its shared `LocationSubscribers`
+ * still tears watches down with the *legacy* `emitter.removeSubscription(sub)`.
+ * That method only exists on `LegacyEventEmitter` (native), so on web every
+ * `watchPositionAsync(...).remove()` throws
+ * `LocationEventEmitter.removeSubscription is not a function` during cleanup.
+ * expo-location's web layer is only a thin wrapper over `navigator.geolocation`
+ * anyway, so we call it straight and get a teardown that actually works.
+ */
+function watchPositionWeb(
+  onSample: (sample: LocationSample) => void,
+  opts?: { minIntervalMs?: number; minDistanceM?: number },
+): StopWatching {
+  if (typeof navigator === 'undefined' || !navigator.geolocation) {
+    log.warn('Geolocation is not available in this browser; not watching position');
+    return () => undefined;
+  }
+
+  const watchId = navigator.geolocation.watchPosition(
+    (position) => {
+      onSample({
+        lat: position.coords.latitude,
+        lng: position.coords.longitude,
+        heading: finiteOrNull(position.coords.heading),
+        speed: finiteOrNull(position.coords.speed),
+        accuracy: finiteOrNull(position.coords.accuracy),
+      });
+    },
+    (error) => log.warn(`Geolocation watch error: ${error.message}`),
+    {
+      enableHighAccuracy: false,
+      // The caller already throttles emissions; this just caps fix staleness.
+      maximumAge: opts?.minIntervalMs ?? 8_000,
+      timeout: 20_000,
+    },
+  );
+
+  return () => {
+    try {
+      navigator.geolocation.clearWatch(watchId);
+    } catch (error) {
+      log.warn(`Failed to clear the geolocation watch: ${String(error)}`);
+    }
+  };
+}
+
 export const locationService: LocationService = {
   async getPermissionStatus() {
     return toStatus(await Location.getForegroundPermissionsAsync());
@@ -88,6 +142,9 @@ export const locationService: LocationService = {
   },
 
   async watchPosition(onSample, opts) {
+    if (Platform.OS === 'web') {
+      return watchPositionWeb(onSample, opts);
+    }
     try {
       const subscription = await Location.watchPositionAsync(
         {

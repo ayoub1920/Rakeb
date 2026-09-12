@@ -1,5 +1,6 @@
 import type { Href } from 'expo-router';
 
+import type { IconName } from '@/components';
 import type { ServiceDefinition, ServiceId } from '@/types/models';
 
 /**
@@ -14,7 +15,9 @@ import type { ServiceDefinition, ServiceId } from '@/types/models';
  */
 const SERVICE_ROUTES: Record<ServiceId, Href | null> = {
   carpool: '/carpool/search',
-  taxi: null,
+  // The taxi landing page (passenger vs. driver), not the search screen
+  // directly — see src/app/taxi/index.tsx.
+  taxi: '/taxi' as Href,
   food: null,
   grocery: null,
 };
@@ -33,4 +36,21 @@ export function getServiceRoute(service: ServiceDefinition): Href | null {
 
 export function isServiceAvailable(service: ServiceDefinition): boolean {
   return getServiceRoute(service) !== null;
+}
+
+/**
+ * An icon per service, for the catalogue and the home screen's shortcuts.
+ *
+ * Local, like `SERVICE_ROUTES` above: `GET /services` carries no icon field,
+ * and adding one would be a backend change this pass doesn't make.
+ */
+const SERVICE_ICONS: Record<ServiceId, IconName> = {
+  carpool: 'people-outline',
+  taxi: 'car-sport-outline',
+  food: 'fast-food-outline',
+  grocery: 'basket-outline',
+};
+
+export function getServiceIcon(service: ServiceDefinition): IconName {
+  return SERVICE_ICONS[service.id] ?? 'apps-outline';
 }

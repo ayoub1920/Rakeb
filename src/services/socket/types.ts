@@ -3,8 +3,9 @@ import type { Id, IsoDateTime } from '@/types/models';
 
 /**
  * Socket event contracts — verified against `rakeb-backend`'s
- * `ConversationsGateway` (`/ws/conversations`), `TrackingGateway` (`/ws/trips`)
- * and `NotificationsGateway` (`/ws/notifications`). Each namespace is a separate
+ * `ConversationsGateway` (`/ws/conversations`), `TrackingGateway` (`/ws/trips`),
+ * `NotificationsGateway` (`/ws/notifications`), `SupportChatGateway`
+ * (`/ws/support`) and `TaxiGateway` (`/ws/taxi`). Each namespace is a separate
  * Socket.IO connection.
  *
  * Handshake auth is `auth: { token }` (a bearer access token). Passing
@@ -13,7 +14,12 @@ import type { Id, IsoDateTime } from '@/types/models';
  * room is the authenticated user.
  */
 
-export type SocketNamespace = '/ws/conversations' | '/ws/trips' | '/ws/notifications';
+export type SocketNamespace =
+  | '/ws/conversations'
+  | '/ws/trips'
+  | '/ws/notifications'
+  | '/ws/support'
+  | '/ws/taxi';
 
 export type SocketStatus = 'idle' | 'connecting' | 'connected' | 'disconnected' | 'error';
 
@@ -83,6 +89,76 @@ export type NotificationServerEvents = {
 /** The room is the authenticated user — nothing for the client to send. */
 export type NotificationClientEvents = Record<string, never>;
 
+// --- /ws/support ---------------------------------------------------
+
+export type SupportChatMessageWire = {
+  id: Id;
+  conversation_id: Id;
+  sender_id: Id | null;
+  sender_role: 'user' | 'staff' | 'system';
+  body: string;
+  created_at: IsoDateTime;
+};
+
+export type SupportServerEvents = {
+  message: SupportChatMessageWire;
+  typing: { user_id: Id; is_staff: boolean; is_typing: boolean };
+  /** Staff room only — a thread had new activity. */
+  'conversation:activity': { conversation_id: Id; last_message: SupportChatMessageWire };
+  error: SocketError;
+};
+
+export type SupportClientEvents = {
+  join: { conversation_id: Id };
+  leave: { conversation_id: Id };
+  'message:send': { conversation_id: Id; body: string };
+  typing: { conversation_id: Id; is_typing: boolean };
+};
+
+// --- /ws/taxi ---------------------------------------------------------
+
+/** Mirrors the backend `TaxiRideStatus` enum. */
+export type TaxiRideStatusWire =
+  | 'searching'
+  | 'driver_assigned'
+  | 'driver_arriving'
+  | 'driver_arrived'
+  | 'trip_started'
+  | 'trip_completed'
+  | 'cancelled'
+  | 'expired';
+
+export type TaxiServerEvents = {
+  ride_status: { ride_id: Id; status: TaxiRideStatusWire; changed_at: IsoDateTime };
+  position: {
+    ride_id: Id;
+    lat: number;
+    lng: number;
+    heading: number | null;
+    speed: number | null;
+    recorded_at: IsoDateTime;
+  };
+  eta_updated: {
+    ride_id: Id;
+    eta_at: IsoDateTime | null;
+    remaining_distance_m: number | null;
+    traffic: string;
+  };
+  error: SocketError;
+};
+
+export type TaxiClientEvents = {
+  join: { ride_id: Id };
+  leave: { ride_id: Id };
+  'driver:position': {
+    ride_id: Id;
+    lat: number;
+    lng: number;
+    heading?: number;
+    speed?: number;
+  };
+};
+
 // --- namespace → event maps -----------------------------------------
 
 export type NamespaceEventMap = {
@@ -97,6 +173,14 @@ export type NamespaceEventMap = {
   '/ws/notifications': {
     server: NotificationServerEvents;
     client: NotificationClientEvents;
+  };
+  '/ws/support': {
+    server: SupportServerEvents;
+    client: SupportClientEvents;
+  };
+  '/ws/taxi': {
+    server: TaxiServerEvents;
+    client: TaxiClientEvents;
   };
 };
 

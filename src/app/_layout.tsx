@@ -47,6 +47,7 @@ function RootNavigator() {
       <Stack.Screen name="(auth)" options={{ headerShown: false }} />
       <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
       <Stack.Screen name="carpool" options={{ headerShown: false }} />
+      <Stack.Screen name="taxi" options={{ headerShown: false }} />
       <Stack.Screen name="profile" options={{ headerShown: false }} />
       <Stack.Screen name="support" options={{ headerShown: false }} />
       <Stack.Screen name="admin" options={{ headerShown: false }} />

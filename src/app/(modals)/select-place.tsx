@@ -11,26 +11,24 @@ import {
   LoadingView,
   Screen,
 } from '@/components';
-import {
-  MIN_AUTOCOMPLETE_LENGTH,
-  usePlaceAutocomplete,
-} from '@/features/carpool/places/queries';
+import { MIN_AUTOCOMPLETE_LENGTH, usePlaceAutocomplete } from '@/features/places/queries';
 import { useCarpoolSearchStore } from '@/stores/carpool-search-store';
 import { usePublishDraftStore } from '@/stores/publish-draft-store';
+import { useTaxiRideStore } from '@/stores/taxi-ride-store';
 import { colors, spacing } from '@/theme';
 import type { Place } from '@/types/models';
 import { useDebouncedValue } from '@/utils/use-debounced-value';
 
-type PlaceField = 'origin' | 'destination' | 'stop';
-type PlaceTarget = 'search' | 'publish';
+type PlaceField = 'origin' | 'destination' | 'stop' | 'pickup';
+type PlaceTarget = 'search' | 'publish' | 'taxi';
 
 /**
  * Place picker.
  *
- * A modal because it is opened from two different flows — passenger search and
- * the driver publish wizard — and must return to whichever one opened it.
- * `field` says which slot the chosen place fills; `target` says which store to
- * write it to (`search` by default).
+ * A modal because it is opened from three different flows — passenger search,
+ * the driver publish wizard, and taxi search — and must return to whichever
+ * one opened it. `field` says which slot the chosen place fills; `target`
+ * says which store to write it to (`search` by default).
  */
 export default function SelectPlaceModal() {
   const { field, target = 'search' } = useLocalSearchParams<{
@@ -45,18 +43,29 @@ export default function SelectPlaceModal() {
   const publishSetOrigin = usePublishDraftStore((s) => s.setOrigin);
   const publishSetDestination = usePublishDraftStore((s) => s.setDestination);
   const publishAddStop = usePublishDraftStore((s) => s.addStop);
+  const taxiSetPickup = useTaxiRideStore((s) => s.setPickup);
+  const taxiSetDestination = useTaxiRideStore((s) => s.setDestination);
 
   const { data, isLoading, isError, error, refetch, isPlaceholderData } =
     usePlaceAutocomplete(debounced);
 
   const title =
-    field === 'origin' ? 'Point de départ' : field === 'stop' ? 'Étape' : 'Destination';
+    field === 'origin' || field === 'pickup'
+      ? field === 'pickup'
+        ? 'Point de prise en charge'
+        : 'Point de départ'
+      : field === 'stop'
+        ? 'Étape'
+        : 'Destination';
 
   function choose(place: Place) {
     if (target === 'publish') {
       if (field === 'origin') publishSetOrigin(place);
       else if (field === 'stop') publishAddStop(place);
       else publishSetDestination(place);
+    } else if (target === 'taxi') {
+      if (field === 'pickup') taxiSetPickup(place);
+      else taxiSetDestination(place);
     } else if (field === 'origin') {
       searchSetOrigin(place);
     } else if (field === 'destination') {
@@ -100,12 +109,14 @@ export default function SelectPlaceModal() {
           autoCorrect={false}
           returnKeyType="search"
         />
-        {target === 'publish' ? (
+        {target === 'publish' || target === 'taxi' ? (
           <AppButton
             label="Choisir sur la carte"
             variant="secondary"
             onPress={() =>
-              router.push(`/(modals)/pick-on-map?field=${field ?? 'origin'}&target=publish`)
+              router.push(
+                `/(modals)/pick-on-map?field=${field ?? (target === 'taxi' ? 'pickup' : 'origin')}&target=${target}`,
+              )
             }
             style={styles.mapButton}
           />

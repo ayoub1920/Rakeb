@@ -7,9 +7,10 @@ import {
   type ViewStyle,
 } from 'react-native';
 
-import { colors, radius, sizes, spacing } from '@/theme';
+import { colors, opacity, radius, sizes, spacing } from '@/theme';
 
 import { AppText } from './AppText';
+import { Icon, type IconName } from './Icon';
 
 export type AppButtonVariant = 'primary' | 'secondary' | 'ghost' | 'danger';
 export type AppButtonSize = 'sm' | 'md' | 'lg';
@@ -23,6 +24,9 @@ export type AppButtonProps = {
   disabled?: boolean;
   /** Stretches to the container width. Default `true` — most buttons are full width. */
   fullWidth?: boolean;
+  /** Rendered before/after the label. Hidden while `loading`. */
+  iconLeft?: IconName;
+  iconRight?: IconName;
   style?: StyleProp<ViewStyle>;
   testID?: string;
   /** Defaults to `label`; override when the label alone is not descriptive. */
@@ -38,12 +42,15 @@ export function AppButton({
   loading = false,
   disabled = false,
   fullWidth = true,
+  iconLeft,
+  iconRight,
   style,
   testID,
   accessibilityLabel,
   accessibilityHint,
 }: AppButtonProps) {
   const isInactive = disabled || loading;
+  const iconColor = isInactive ? 'tertiary' : labelColor[variant];
 
   return (
     <Pressable
@@ -72,9 +79,13 @@ export function AppButton({
             color={labelColor[variant] === 'inverse' ? colors.text.inverse : colors.brand.primary}
           />
         ) : (
-          <AppText variant="button" color={isInactive ? 'tertiary' : labelColor[variant]}>
-            {label}
-          </AppText>
+          <>
+            {iconLeft ? <Icon name={iconLeft} size="md" color={iconColor} /> : null}
+            <AppText variant="button" color={iconColor}>
+              {label}
+            </AppText>
+            {iconRight ? <Icon name={iconRight} size="md" color={iconColor} /> : null}
+          </>
         )}
       </View>
     </Pressable>
@@ -122,7 +133,7 @@ const styles = StyleSheet.create({
     gap: spacing.sm,
   },
   pressed: {
-    opacity: 0.85,
+    opacity: opacity.pressedSubtle,
   },
   inactive: {
     backgroundColor: colors.background.disabled,

@@ -17,6 +17,7 @@ import {
   useShareBooking,
 } from '@/features/carpool/bookings/queries';
 import { BookingStatusBadge } from '@/features/carpool/trips/components/TripStatusBadge';
+import { SupportButton } from '@/features/support/SupportButton';
 import { colors, radius, spacing } from '@/theme';
 import type { BookingDetail } from '@/types/models';
 import { formatLongDate, formatIsoTime, parseIsoDate } from '@/utils/date';
@@ -28,17 +29,20 @@ export default function BookingDetailsScreen() {
   const { data: booking, isLoading, isError, error, refetch } = useBooking(id);
 
   return (
-    <Screen scrollable>
-      <Stack.Screen options={{ title: 'Votre réservation' }} />
+    <>
+      <Screen scrollable>
+        <Stack.Screen options={{ title: 'Votre réservation' }} />
 
-      {isLoading ? (
-        <LoadingView />
-      ) : isError || !booking ? (
-        <ErrorView error={error} onRetry={() => void refetch()} />
-      ) : (
-        <Ticket booking={booking} />
-      )}
-    </Screen>
+        {isLoading ? (
+          <LoadingView />
+        ) : isError || !booking ? (
+          <ErrorView error={error} onRetry={() => void refetch()} />
+        ) : (
+          <Ticket booking={booking} />
+        )}
+      </Screen>
+      <SupportButton bottom={24} />
+    </>
   );
 }
 

@@ -9,7 +9,9 @@ import {
   AppText,
   EmptyView,
   ErrorView,
+  IconMedallion,
   LoadingView,
+  RouteLine,
   Screen,
   ScreenHeader,
 } from '@/components';
@@ -59,6 +61,7 @@ export default function ActivityScreen() {
       {bucket === 'past' && toRate.length > 0 ? (
         <AppCard
           style={styles.rateCard}
+          leading={<IconMedallion icon="star-outline" shape="square" size="sm" tone="warning" />}
           onPress={() => router.push(`/carpool/review/${toRate[0].booking_id}`)}
         >
           <AppText variant="subheading">
@@ -78,6 +81,7 @@ export default function ActivityScreen() {
         <ErrorView error={query.error} onRetry={() => void query.refetch()} />
       ) : bookings.length === 0 ? (
         <EmptyView
+          icon="receipt-outline"
           title="Rien ici pour l’instant"
           description={
             bucket === 'upcoming'
@@ -113,9 +117,11 @@ function BookingRow({ booking }: { booking: Booking }) {
       accessibilityLabel={`Réservation ${booking.trip.origin.label} vers ${booking.trip.destination.label}`}
     >
       <View style={styles.rowTop}>
-        <AppText variant="subheading">
-          {booking.trip.origin.governorate} → {booking.trip.destination.governorate}
-        </AppText>
+        <RouteLine
+          style={styles.route}
+          originLabel={booking.trip.origin.governorate}
+          destinationLabel={booking.trip.destination.governorate}
+        />
         <AppText variant="bodySmall" color="brand">
           {formatMillimes(booking.total_price, { compact: true })}
         </AppText>
@@ -162,6 +168,9 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     gap: spacing.md,
     marginBottom: spacing.xxs,
+  },
+  route: {
+    flex: 1,
   },
   rowBottom: {
     flexDirection: 'row',

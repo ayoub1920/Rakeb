@@ -1,6 +1,6 @@
 import { Stack } from 'expo-router';
 
-import { colors } from '@/theme';
+import { stackScreenOptions } from '@/theme';
 
 /**
  * Carpool stack — passenger and driver.
@@ -11,14 +11,11 @@ import { colors } from '@/theme';
  */
 export default function CarpoolLayout() {
   return (
-    <Stack
-      screenOptions={{
-        headerBackButtonDisplayMode: 'minimal',
-        headerTintColor: colors.brand.primary,
-        headerTitleStyle: { color: colors.text.primary },
-        headerShadowVisible: false,
-        contentStyle: { backgroundColor: colors.background.default },
-      }}
-    />
+    <Stack screenOptions={stackScreenOptions}>
+      {/* The publish wizard is a nested stack with its own per-step headers —
+          without this the parent stack stacks a second, empty "publish" bar
+          on top of every step. */}
+      <Stack.Screen name="publish" options={{ headerShown: false }} />
+    </Stack>
   );
 }
