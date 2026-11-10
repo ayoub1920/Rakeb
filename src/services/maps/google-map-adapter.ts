@@ -1,6 +1,6 @@
 import { Platform } from 'react-native';
 
-import { regionForCoordinates } from './map-adapter';
+import { regionForCoordinates } from './geo';
 import type { MapAdapter } from './map-adapter';
 import type { Coordinate } from './types';
 

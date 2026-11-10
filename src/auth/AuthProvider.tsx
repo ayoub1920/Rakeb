@@ -50,10 +50,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (status === 'unauthenticated') {
       queryClient.clear();
       // A single-frame redirect by the route guard would leave authenticated
-      // screens on the stack underneath /(auth)/welcome. Unwind them first.
+      // screens on the stack underneath /(auth)/welcome. Unwind them first —
+      // but only when something is stacked, or POP_TO_TOP goes unhandled.
       if (wasAuthenticated.current) {
         wasAuthenticated.current = false;
-        router.dismissAll();
+        if (router.canDismiss()) router.dismissAll();
       }
     }
   }, [status, queryClient]);

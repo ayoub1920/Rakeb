@@ -1,6 +1,3 @@
-import { DEFAULT_MAP_REGION } from '@/config/constants';
-import type { Coordinates, Place } from '@/types/models';
-
 import type { Coordinate, MapMarker, MapPolyline, MapRegion } from './types';
 
 /**
@@ -25,43 +22,9 @@ export interface MapAdapter {
   decodePolyline(encoded: string): Coordinate[];
 }
 
-/** `{ lat, lng }` from the API → `{ latitude, longitude }` for map SDKs. */
-export function toCoordinate(value: Coordinates): Coordinate {
-  return { latitude: value.lat, longitude: value.lng };
-}
-
-export function placeToMarker(place: Place, kind: MapMarker['kind']): MapMarker {
-  return {
-    id: place.id,
-    coordinate: toCoordinate(place),
-    kind,
-    title: place.label,
-    description: place.governorate,
-  };
-}
-
-/** Padding applied around the tightest bounding box, as a fraction of its span. */
-const REGION_PADDING = 0.25;
-const MIN_DELTA = 0.02;
-
-export function regionForCoordinates(coordinates: Coordinate[]): MapRegion {
-  if (coordinates.length === 0) return { ...DEFAULT_MAP_REGION };
-
-  const latitudes = coordinates.map((point) => point.latitude);
-  const longitudes = coordinates.map((point) => point.longitude);
-
-  const minLat = Math.min(...latitudes);
-  const maxLat = Math.max(...latitudes);
-  const minLng = Math.min(...longitudes);
-  const maxLng = Math.max(...longitudes);
-
-  return {
-    latitude: (minLat + maxLat) / 2,
-    longitude: (minLng + maxLng) / 2,
-    latitudeDelta: Math.max(MIN_DELTA, (maxLat - minLat) * (1 + REGION_PADDING)),
-    longitudeDelta: Math.max(MIN_DELTA, (maxLng - minLng) * (1 + REGION_PADDING)),
-  };
-}
+// Pure helpers live in `./geo` (no adapter dependency) so `google-map-adapter.ts`
+// can reuse `regionForCoordinates` without importing back from this file.
+export { toCoordinate, placeToMarker, regionForCoordinates } from './geo';
 
 /**
  * The adapter in use: `react-native-maps` (see `./google-map-adapter`).
